@@ -42,9 +42,16 @@ $hostRoot = Get-NormalizedPath $HostInstallPath
 $managedRoot = Get-NormalizedPath (Join-Path $env:LOCALAPPDATA "Auralith_Editer")
 $targetRoot = Get-NormalizedPath $InstallPath
 Assert-PathInside -Path $targetRoot -Parent $managedRoot
+if ($targetRoot.Equals($managedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "InstallPath must be a dedicated child directory, not the managed Auralith_Editer root."
+}
 
 $hostExecutable = Join-Path $hostRoot "DesktopEditors.exe"
-$pluginBuild = Join-Path $workspace "desktop-sdk\ChromiumBasedEditors\plugins\ai-agent\deploy\{9DC93CDB-B576-4F0C-B55E-FCC9C48DD777}"
+$legacyAgentPluginGuid = "{9DC93CDB-B576-4F0C-B55E-FCC9C48DD777}"
+$legacyReaderPluginGuid = "{FD767ACC-663E-476F-8F5F-6AEB513DF6E6}"
+$agentBundleBuild = Join-Path $workspace "desktop-sdk\ChromiumBasedEditors\plugins\ai-agent\deploy\auralith-agent"
+$agentHostJs = Join-Path $workspace "web-apps\apps\common\main\lib\auralith-agent-host.js"
+$agentHostCss = Join-Path $workspace "web-apps\apps\common\main\lib\auralith-agent-host.css"
 $sdkBuild = Join-Path $workspace "sdkjs\deploy\sdkjs\word"
 $snapshotSource = Join-Path $workspace "sdkjs\word\Editor\document\multimodal-snapshot.js"
 $sampleDocument = Join-Path $workspace "desktop-sdk\ChromiumBasedEditors\plugins\ai-agent\test-fixtures\docx-reader\known\04-inline-image-caption.docx"
@@ -52,9 +59,12 @@ $launcherSource = Join-Path $workspace "tools\AuralithTestLauncher.cs"
 
 $requiredFiles = @(
     $hostExecutable,
-    (Join-Path $pluginBuild "config.json"),
-    (Join-Path $pluginBuild "reader.html"),
-    (Join-Path $pluginBuild "reader.js"),
+    (Join-Path $agentBundleBuild "manifest.json"),
+    (Join-Path $agentBundleBuild "reader.html"),
+    (Join-Path $agentBundleBuild "reader.js"),
+    (Join-Path $agentBundleBuild "reader.css"),
+    $agentHostJs,
+    $agentHostCss,
     (Join-Path $sdkBuild "sdk-all-min.js"),
     (Join-Path $sdkBuild "sdk-all.js"),
     $snapshotSource,
@@ -64,6 +74,18 @@ $requiredFiles = @(
 foreach ($requiredFile in $requiredFiles) {
     if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
         throw "Required build artifact is missing: $requiredFile"
+    }
+}
+
+$agentEntryHtml = Get-Content -LiteralPath (Join-Path $agentBundleBuild "reader.html") -Raw
+$agentEntryReferences = [regex]::Matches(
+    $agentEntryHtml,
+    '(?:src|href)="\./([^"?]+)'
+)
+foreach ($referenceMatch in $agentEntryReferences) {
+    $referencedFile = Join-Path $agentBundleBuild $referenceMatch.Groups[1].Value
+    if (-not (Test-Path -LiteralPath $referencedFile -PathType Leaf)) {
+        throw "Auralith Agent bundle dependency is missing: $referencedFile"
     }
 }
 
@@ -95,22 +117,61 @@ $wordRuntime = Join-Path $targetRoot "editors\sdkjs\word"
 Copy-Item -LiteralPath (Join-Path $sdkBuild "sdk-all-min.js") -Destination (Join-Path $wordRuntime "sdk-all-min.js") -Force
 Copy-Item -LiteralPath (Join-Path $sdkBuild "sdk-all.js") -Destination (Join-Path $wordRuntime "sdk-all.js") -Force
 
-$pluginTarget = Join-Path $targetRoot "editors\sdkjs-plugins\{9DC93CDB-B576-4F0C-B55E-FCC9C48DD777}"
-Assert-PathInside -Path $pluginTarget -Parent $targetRoot
-if (Test-Path -LiteralPath $pluginTarget) {
-    Remove-Item -LiteralPath $pluginTarget -Recurse -Force
-}
-New-Item -ItemType Directory -Path $pluginTarget -Force | Out-Null
-Get-ChildItem -LiteralPath $pluginBuild -Force | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $pluginTarget -Recurse -Force
+$pluginsRoot = Join-Path $targetRoot "editors\sdkjs-plugins"
+foreach ($legacyGuid in @($legacyAgentPluginGuid, $legacyReaderPluginGuid)) {
+    $legacyTarget = Join-Path $pluginsRoot $legacyGuid
+    Assert-PathInside -Path $legacyTarget -Parent $targetRoot
+    if (Test-Path -LiteralPath $legacyTarget) {
+        Remove-Item -LiteralPath $legacyTarget -Recurse -Force
+    }
 }
 
-$installedConfigPath = Join-Path $pluginTarget "config.json"
-$installedConfig = Get-Content -LiteralPath $installedConfigPath -Raw | ConvertFrom-Json
-$installedConfig | Add-Member -NotePropertyName "version" -NotePropertyValue "99.999.999" -Force
-$installedConfig |
-    ConvertTo-Json -Depth 32 |
-    Set-Content -LiteralPath $installedConfigPath -Encoding utf8
+$webAppsRoot = Join-Path $targetRoot "editors\web-apps"
+$commonMain = Join-Path $webAppsRoot "apps\common\main"
+$agentBundleTarget = Join-Path $commonMain "auralith-agent"
+Assert-PathInside -Path $agentBundleTarget -Parent $targetRoot
+if (Test-Path -LiteralPath $agentBundleTarget) {
+    Remove-Item -LiteralPath $agentBundleTarget -Recurse -Force
+}
+New-Item -ItemType Directory -Path $agentBundleTarget -Force | Out-Null
+Get-ChildItem -LiteralPath $agentBundleBuild -Force | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $agentBundleTarget -Recurse -Force
+}
+
+$hostScriptTarget = Join-Path $commonMain "lib\auralith-agent-host.js"
+$hostStyleTarget = Join-Path $commonMain "lib\auralith-agent-host.css"
+Copy-Item -LiteralPath $agentHostJs -Destination $hostScriptTarget -Force
+Copy-Item -LiteralPath $agentHostCss -Destination $hostStyleTarget -Force
+
+$editorHosts = @(
+    [pscustomobject]@{ Directory = "documenteditor"; Kind = "document" },
+    [pscustomobject]@{ Directory = "spreadsheeteditor"; Kind = "spreadsheet" },
+    [pscustomobject]@{ Directory = "presentationeditor"; Kind = "presentation" },
+    [pscustomobject]@{ Directory = "pdfeditor"; Kind = "pdf" },
+    [pscustomobject]@{ Directory = "visioeditor"; Kind = "visio" }
+)
+
+$hostMarker = "<!-- Auralith Agent built-in host -->"
+foreach ($editorHost in $editorHosts) {
+    $editorIndex = Join-Path $webAppsRoot "apps\$($editorHost.Directory)\main\index.html"
+    if (-not (Test-Path -LiteralPath $editorIndex -PathType Leaf)) {
+        throw "Editor host page is missing: $editorIndex"
+    }
+
+    $html = Get-Content -LiteralPath $editorIndex -Raw
+    if (-not $html.Contains($hostMarker)) {
+        $injection = @"
+    $hostMarker
+    <link rel="stylesheet" href="../../common/main/lib/auralith-agent-host.css">
+    <script src="../../common/main/lib/auralith-agent-host.js" data-auralith-editor="$($editorHost.Kind)"></script>
+"@
+        if (-not $html.Contains("</body>")) {
+            throw "Cannot locate </body> in editor host page: $editorIndex"
+        }
+        $html = $html.Replace("</body>", "$injection`r`n</body>")
+        Set-Content -LiteralPath $editorIndex -Value $html -Encoding utf8
+    }
+}
 
 $auralithExecutable = Join-Path $targetRoot "Auralith_Editer.exe"
 Copy-Item -LiteralPath $hostExecutable -Destination $auralithExecutable -Force
@@ -140,8 +201,15 @@ $manifest = [ordered]@{
     product = "Auralith_Editer"
     installedAt = (Get-Date).ToUniversalTime().ToString("o")
     workspace = $workspace
-    pluginGuid = "{9DC93CDB-B576-4F0C-B55E-FCC9C48DD777}"
-    pluginVersion = "99.999.999"
+    agent = [ordered]@{
+        name = "Auralith Agent"
+        kind = "builtin-editor-surface"
+        path = $agentBundleTarget
+        entry = "reader.html"
+        registeredAsPlugin = $false
+        currentCapabilities = @("docx-multimodal-reader")
+        hostEditors = $editorHosts.Kind
+    }
     sdkMinSha256 = (Get-FileHash -LiteralPath (Join-Path $wordRuntime "sdk-all-min.js") -Algorithm SHA256).Hash
     sdkAllSha256 = (Get-FileHash -LiteralPath (Join-Path $wordRuntime "sdk-all.js") -Algorithm SHA256).Hash
     sampleDocument = $sampleDocument
@@ -160,14 +228,15 @@ if (-not $SkipShortcut) {
     $shortcut.WorkingDirectory = $targetRoot
     $shortcut.Arguments = "`"$sampleDocument`""
     $shortcut.IconLocation = (Join-Path $targetRoot "app.ico")
-    $shortcut.Description = "Auralith_Editer DOCX multimodal reader test build"
+    $shortcut.Description = "Auralith_Editer built-in Agent test build"
     $shortcut.Save()
 }
 
 [pscustomobject]@{
     InstallPath = $targetRoot
     Executable = $auralithExecutable
-    PluginPath = $pluginTarget
+    AgentPath = $agentBundleTarget
+    RegisteredAsPlugin = $false
     SampleDocument = $sampleDocument
     Shortcut = $shortcutPath
 }
