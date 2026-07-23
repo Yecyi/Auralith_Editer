@@ -2,11 +2,15 @@
 param(
     [string]$HostInstallPath = "C:\Program Files\ONLYOFFICE\DesktopEditors",
     [string]$InstallPath = (Join-Path $env:LOCALAPPDATA "Auralith_Editer\TestBuild"),
-    [string]$WorkspaceRoot = (Split-Path $PSScriptRoot -Parent),
+    [string]$WorkspaceRoot = "",
     [switch]$SkipShortcut
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($WorkspaceRoot)) {
+    $WorkspaceRoot = Split-Path $PSScriptRoot -Parent
+}
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -37,6 +41,60 @@ function Assert-PathInside {
     }
 }
 
+function Test-PathsOverlap {
+    param(
+        [Parameter(Mandatory = $true)][string]$First,
+        [Parameter(Mandatory = $true)][string]$Second
+    )
+
+    $normalizedFirst = Get-NormalizedPath $First
+    $normalizedSecond = Get-NormalizedPath $Second
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+    return (
+        $normalizedFirst.Equals(
+            $normalizedSecond,
+            [System.StringComparison]::OrdinalIgnoreCase
+        ) -or
+        $normalizedFirst.StartsWith(
+            $normalizedSecond + $separator,
+            [System.StringComparison]::OrdinalIgnoreCase
+        ) -or
+        $normalizedSecond.StartsWith(
+            $normalizedFirst + $separator,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )
+    )
+}
+
+function Assert-NoReparsePoint {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$StopAt
+    )
+
+    $current = Get-NormalizedPath $Path
+    $stop = Get-NormalizedPath $StopAt
+    while ($current.StartsWith(
+        $stop,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )) {
+        if (Test-Path -LiteralPath $current) {
+            $item = Get-Item -LiteralPath $current -Force
+            if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing to modify a managed path through a reparse point: $current"
+            }
+        }
+        if ($current.Equals($stop, [System.StringComparison]::OrdinalIgnoreCase)) {
+            break
+        }
+        $parent = Split-Path $current -Parent
+        if (-not $parent -or $parent -eq $current) {
+            break
+        }
+        $current = $parent
+    }
+}
+
 $workspace = Get-NormalizedPath $WorkspaceRoot
 $hostRoot = Get-NormalizedPath $HostInstallPath
 $managedRoot = Get-NormalizedPath (Join-Path $env:LOCALAPPDATA "Auralith_Editer")
@@ -45,6 +103,11 @@ Assert-PathInside -Path $targetRoot -Parent $managedRoot
 if ($targetRoot.Equals($managedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "InstallPath must be a dedicated child directory, not the managed Auralith_Editer root."
 }
+if ((Test-PathsOverlap -First $targetRoot -Second $hostRoot) -or
+    (Test-PathsOverlap -First $targetRoot -Second $workspace)) {
+    throw "InstallPath must not overlap the host installation or source workspace."
+}
+Assert-NoReparsePoint -Path $targetRoot -StopAt $managedRoot
 
 $hostExecutable = Join-Path $hostRoot "DesktopEditors.exe"
 $legacyAgentPluginGuid = "{9DC93CDB-B576-4F0C-B55E-FCC9C48DD777}"
@@ -159,18 +222,39 @@ foreach ($editorHost in $editorHosts) {
     }
 
     $html = Get-Content -LiteralPath $editorIndex -Raw
-    if (-not $html.Contains($hostMarker)) {
-        $injection = @"
+    $html = [regex]::Replace(
+        $html,
+        '\s*<!-- Auralith Agent built-in host -->\s*',
+        "`r`n"
+    )
+    $html = [regex]::Replace(
+        $html,
+        '\s*<link\b[^>]*href=["'']\.\./\.\./common/main/lib/auralith-agent-host\.css["''][^>]*>\s*',
+        "`r`n",
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    )
+    $html = [regex]::Replace(
+        $html,
+        '\s*<script\b[^>]*src=["'']\.\./\.\./common/main/lib/auralith-agent-host\.js["''][^>]*>\s*</script>\s*',
+        "`r`n",
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    )
+    $injection = @"
     $hostMarker
     <link rel="stylesheet" href="../../common/main/lib/auralith-agent-host.css">
     <script src="../../common/main/lib/auralith-agent-host.js" data-auralith-editor="$($editorHost.Kind)"></script>
 "@
-        if (-not $html.Contains("</body>")) {
-            throw "Cannot locate </body> in editor host page: $editorIndex"
-        }
-        $html = $html.Replace("</body>", "$injection`r`n</body>")
-        Set-Content -LiteralPath $editorIndex -Value $html -Encoding utf8
+    if (-not $html.Contains("</body>")) {
+        throw "Cannot locate </body> in editor host page: $editorIndex"
     }
+    $html = $html.Replace("</body>", "$injection`r`n</body>")
+    if (
+        ([regex]::Matches($html, [regex]::Escape("auralith-agent-host.css"))).Count -ne 1 -or
+        ([regex]::Matches($html, [regex]::Escape("auralith-agent-host.js"))).Count -ne 1
+    ) {
+        throw "Editor host injection is not idempotent: $editorIndex"
+    }
+    Set-Content -LiteralPath $editorIndex -Value $html -Encoding utf8
 }
 
 $auralithExecutable = Join-Path $targetRoot "Auralith_Editer.exe"
