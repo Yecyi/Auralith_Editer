@@ -31,6 +31,12 @@ prepare_submodule() {
         git -C "$module_path" remote add upstream "$upstream_url"
     fi
 
+    local branch_refspec="+refs/heads/$branch_name:refs/remotes/origin/$branch_name"
+    if ! git -C "$module_path" config --get-all remote.origin.fetch |
+        grep -Fqx "$branch_refspec"; then
+        git -C "$module_path" config --add remote.origin.fetch "$branch_refspec"
+    fi
+
     if ! git -C "$module_path" show-ref --verify --quiet \
         "refs/remotes/origin/$branch_name" ||
         [[ "$(git -C "$module_path" rev-parse "origin/$branch_name")" != "$expected_commit" ]]; then

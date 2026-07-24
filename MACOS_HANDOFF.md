@@ -18,6 +18,10 @@ Codex and other repository-aware agents will read `AGENTS.md`, which instructs
 them to run this bootstrap automatically when the submodules are absent or
 out of date.
 
+Each writable fork uses `auralith/master` as its GitHub default branch. This
+ensures a shallow submodule clone downloads the Auralith tree directly instead
+of downloading the upstream `master` tree first.
+
 ## Repository map
 
 | Path | Writable origin | Upstream | Branch | Pinned commit |
