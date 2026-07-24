@@ -3,16 +3,22 @@
 	url = https://github.com/ONLYOFFICE/desktop-apps.git
 [submodule "desktop-sdk"]
 	path = desktop-sdk
-	url = https://github.com/ONLYOFFICE/desktop-sdk.git
+	url = https://github.com/Yecyi/desktop-sdk.git
+	branch = auralith/master
+	shallow = true
 [submodule "core"]
 	path = core
 	url = https://github.com/ONLYOFFICE/core.git
 [submodule "sdkjs"]
 	path = sdkjs
-	url = https://github.com/ONLYOFFICE/sdkjs.git
+	url = https://github.com/Yecyi/sdkjs.git
+	branch = auralith/master
+	shallow = true
 [submodule "dictionaries"]
 	path = dictionaries
 	url = https://github.com/ONLYOFFICE/dictionaries.git
 [submodule "web-apps"]
 	path = web-apps
-	url = https://github.com/ONLYOFFICE/web-apps-pro.git
+	url = https://github.com/Yecyi/web-apps.git
+	branch = auralith/master
+	shallow = true
