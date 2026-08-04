@@ -25,6 +25,10 @@ const paths = Object.freeze({
     rootDir,
     "web-apps/apps/common/main/lib/auralith-agent-write-executor.js"
   ),
+  transport: path.join(
+    rootDir,
+    "web-apps/apps/common/main/lib/auralith-agent-write-transport.js"
+  ),
   documentEditorIndex: path.join(
     rootDir,
     "web-apps/apps/documenteditor/main/index.html"
@@ -141,9 +145,9 @@ function verifyRegistry(registry) {
 
 function main() {
   const registry = readJson(paths.registry);
-  const manifest = readJson(paths.manifest);
   const host = readText(paths.host);
   const executor = readText(paths.executor);
+  const transport = readText(paths.transport);
   const documentEditorIndex = readText(paths.documentEditorIndex);
   const wordConfig = readText(paths.wordConfig);
   const sdkRunAll = readText(paths.sdkRunAll);
@@ -154,13 +158,21 @@ function main() {
   const expectedProductionCapabilities = expectedStatus
     .filter((capability) => capability.productionEnabled)
     .map((capability) => capability.id);
-  assert.equal(manifest.name, "Auralith Agent");
-  assert.equal(manifest.kind, "builtin-editor-surface");
-  assert.equal(manifest.entry, "reader.html");
-  assert.equal(manifest.protocolVersion, registry.protocolVersion);
-  assert.equal(manifest.capabilityRegistryVersion, registry.registryVersion);
-  assert.deepEqual(manifest.capabilities, expectedProductionCapabilities);
-  assert.deepEqual(manifest.capabilityStatus, expectedStatus);
+  const expectedManifest = {
+    name: "Auralith Agent",
+    kind: "builtin-editor-surface",
+    entry: "reader.html",
+    protocolVersion: registry.protocolVersion,
+    capabilityRegistryVersion: registry.registryVersion,
+    capabilities: expectedProductionCapabilities,
+    capabilityStatus: expectedStatus,
+  };
+  // deploy/auralith-agent is generated and intentionally ignored. Verify it
+  // when present, while keeping a fresh clone verifiable before the first
+  // isolated Vite build.
+  if (fs.existsSync(paths.manifest)) {
+    assert.deepEqual(readJson(paths.manifest), expectedManifest);
+  }
 
   assert.equal(parseStringConst(host, "OFFICE_PROTOCOL_VERSION"), registry.protocolVersion);
   const expectedBuiltinMethods = registry.capabilities.flatMap((capability) =>
@@ -181,6 +193,27 @@ function main() {
   );
   assert.equal(parseStringConst(executor, "CAPABILITY_ID"), formatting.id);
   assert.equal(parseStringConst(executor, "CAPABILITY_VERSION"), formatting.version);
+  assert.equal(
+    parseStringConst(transport, "PROTOCOL_VERSION"),
+    registry.protocolVersion,
+    "Host write transport protocol disagrees with the capability registry."
+  );
+  assert.equal(
+    parseStringConst(transport, "AUTHORIZE_TYPE"),
+    "auralith-agent:tool-authorize"
+  );
+  assert.equal(
+    parseStringConst(transport, "EXECUTE_TYPE"),
+    "auralith-agent:tool-execute"
+  );
+  assert.equal(
+    parseStringConst(transport, "CANCEL_TYPE"),
+    "auralith-agent:tool-cancel"
+  );
+  assert.equal(
+    parseStringConst(transport, "RESPONSE_TYPE"),
+    "auralith-agent:tool-response"
+  );
   for (const operationId of ["inspect", "apply"]) {
     const operation = formatting.operations.find((candidate) => candidate.id === operationId);
     assert.ok(operation, `selection-formatting/${operationId} is missing.`);
@@ -189,9 +222,17 @@ function main() {
   }
 
   const executorIndex = documentEditorIndex.indexOf("auralith-agent-write-executor.js");
+  const transportIndex = documentEditorIndex.indexOf("auralith-agent-write-transport.js");
   const hostIndex = documentEditorIndex.indexOf("auralith-agent-host.js");
   assert.ok(executorIndex >= 0, "Document Editor does not load the write executor.");
-  assert.ok(hostIndex > executorIndex, "Document Editor must load the executor before the Host.");
+  assert.ok(
+    transportIndex > executorIndex,
+    "Document Editor must load the executor before the write transport."
+  );
+  assert.ok(
+    hostIndex > transportIndex,
+    "Document Editor must load the write transport before the Host."
+  );
 
   for (const source of [
     "word/Editor/document/content-change-feed.js",

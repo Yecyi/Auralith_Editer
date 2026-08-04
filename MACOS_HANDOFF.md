@@ -202,4 +202,39 @@ That command produces a substantially smaller advanced-compiled bundle for a
 different deployment profile and the macOS editor will fail to open DOCX files
 when it replaces the desktop bundle.
 
+## Repeatable macOS test installation
+
+Use the guarded installer for the dedicated user-local test bundle. Its target
+is fixed at `~/Applications/Auralith_Editer Test.app`; there is no option that
+can redirect writes to a production application, the workspace, or another
+directory.
+
+```bash
+# Read-only source, target, production-entry, bundle-id and signature preflight.
+bash tools/install-auralith-test-macos.sh --dry-run
+
+# Full isolated Agent/Word SDK build, staging, ad-hoc signing and hash checks,
+# but no backup or installed-app change.
+bash tools/install-auralith-test-macos.sh --stage-only
+
+# Explicit installation transaction after closing Auralith_Editer Test.
+bash tools/install-auralith-test-macos.sh --install
+```
+
+The script automatically selects a discoverable Node.js 20 runtime. It runs
+`npx vite build --outDir ...` in a temporary Agent output directory and uses a
+temporary SDKJS build root whose inputs link to the current source working tree
+before running the required desktop/whitespace-only Word compile. It never
+invokes the Agent deploy-packaging command or writes SDK build output into the
+source submodule.
+
+Before installation, the complete current app is copied to a timestamped
+directory under `~/Applications/Auralith_Editer Test.app.rollback`. The staged
+app must pass source-to-target comparisons, payload SHA-256 verification,
+production `require(['app'])`/no-`app_dev` checks, exact
+executor → transport → Host ordering, desktop Word bundle-shape checks, bundle
+identity validation, and strict deep ad-hoc signature validation. The final
+replacement uses same-volume renames; if any post-swap check fails, the script
+restores the original app and retains the failed candidate for diagnosis.
+
 The development launcher is also described in `.claude/launch.json`.

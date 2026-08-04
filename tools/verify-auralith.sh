@@ -151,8 +151,9 @@ done
 step "Canonical capability, Host gate, manifest, and SDK build-list consistency"
 node tools/verify-auralith-contracts.mjs
 
-step "Host-owned selection-formatting executor"
+step "Host-owned selection-formatting executor and receipt transport"
 node web-apps/test/unit-tests/auralith-agent-write-executor.test.js
+node web-apps/test/unit-tests/auralith-agent-write-transport.test.js
 
 step "SDKJS syntax and suite registration"
 for file in \
@@ -161,6 +162,7 @@ for file in \
     sdkjs/word/Editor/document/content-change-feed.js \
     sdkjs/word/Editor/document/multimodal-snapshot.js \
     sdkjs/word/Editor/document/selection-text-formatting.js \
+    sdkjs/word/api_plugins.js \
     sdkjs/tests/word/plugins/remoteCollaborativeApply.js; do
     node --check "$file"
 done
@@ -190,7 +192,12 @@ if [[ "$mode" == "fast" ]]; then
             src/office-tools/office-capability-manifest.test.ts \
             src/office-tools/office-capability-registry.test.ts \
             src/office-tools/selection-text-formatting.test.ts \
-            src/document-reader/integration/builtin-document-rpc.test.ts
+            src/document-reader/integration/builtin-document-rpc.test.ts \
+            src/document-reader/integration/selection-formatting-agent.test.ts \
+            src/document-reader/integration/selection-formatting-command.test.ts \
+            src/document-reader/session/document-agent.test.ts \
+            src/document-reader/ui/ReaderSelectionFormattingAction.test.tsx \
+            src/document-reader/ui/host-tool-transport.test.ts
     )
 
     step "Focused SDKJS remote-cowork QUnit"
