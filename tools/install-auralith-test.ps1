@@ -115,6 +115,7 @@ $legacyReaderPluginGuid = "{FD767ACC-663E-476F-8F5F-6AEB513DF6E6}"
 $agentBundleBuild = Join-Path $workspace "desktop-sdk\ChromiumBasedEditors\plugins\ai-agent\deploy\auralith-agent"
 $agentHostJs = Join-Path $workspace "web-apps\apps\common\main\lib\auralith-agent-host.js"
 $agentHostCss = Join-Path $workspace "web-apps\apps\common\main\lib\auralith-agent-host.css"
+$agentWriteExecutorJs = Join-Path $workspace "web-apps\apps\common\main\lib\auralith-agent-write-executor.js"
 $sdkBuild = Join-Path $workspace "sdkjs\deploy\sdkjs\word"
 $snapshotSource = Join-Path $workspace "sdkjs\word\Editor\document\multimodal-snapshot.js"
 $sampleDocument = Join-Path $workspace "desktop-sdk\ChromiumBasedEditors\plugins\ai-agent\test-fixtures\docx-reader\known\04-inline-image-caption.docx"
@@ -128,6 +129,7 @@ $requiredFiles = @(
     (Join-Path $agentBundleBuild "reader.css"),
     $agentHostJs,
     $agentHostCss,
+    $agentWriteExecutorJs,
     (Join-Path $sdkBuild "sdk-all-min.js"),
     (Join-Path $sdkBuild "sdk-all.js"),
     $snapshotSource,
@@ -203,8 +205,10 @@ Get-ChildItem -LiteralPath $agentBundleBuild -Force | ForEach-Object {
 
 $hostScriptTarget = Join-Path $commonMain "lib\auralith-agent-host.js"
 $hostStyleTarget = Join-Path $commonMain "lib\auralith-agent-host.css"
+$writeExecutorTarget = Join-Path $commonMain "lib\auralith-agent-write-executor.js"
 Copy-Item -LiteralPath $agentHostJs -Destination $hostScriptTarget -Force
 Copy-Item -LiteralPath $agentHostCss -Destination $hostStyleTarget -Force
+Copy-Item -LiteralPath $agentWriteExecutorJs -Destination $writeExecutorTarget -Force
 
 $editorHosts = @(
     [pscustomobject]@{ Directory = "documenteditor"; Kind = "document" },
@@ -235,13 +239,25 @@ foreach ($editorHost in $editorHosts) {
     )
     $html = [regex]::Replace(
         $html,
+        '\s*<script\b[^>]*src=["'']\.\./\.\./common/main/lib/auralith-agent-write-executor\.js["''][^>]*>\s*</script>\s*',
+        "`r`n",
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    )
+    $html = [regex]::Replace(
+        $html,
         '\s*<script\b[^>]*src=["'']\.\./\.\./common/main/lib/auralith-agent-host\.js["''][^>]*>\s*</script>\s*',
         "`r`n",
         [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
     )
+    $writeExecutorInjection = if ($editorHost.Kind -eq "document") {
+        '    <script src="../../common/main/lib/auralith-agent-write-executor.js"></script>'
+    } else {
+        ""
+    }
     $injection = @"
     $hostMarker
     <link rel="stylesheet" href="../../common/main/lib/auralith-agent-host.css">
+$writeExecutorInjection
     <script src="../../common/main/lib/auralith-agent-host.js" data-auralith-editor="$($editorHost.Kind)"></script>
 "@
     if (-not $html.Contains("</body>")) {
@@ -250,7 +266,11 @@ foreach ($editorHost in $editorHosts) {
     $html = $html.Replace("</body>", "$injection`r`n</body>")
     if (
         ([regex]::Matches($html, [regex]::Escape("auralith-agent-host.css"))).Count -ne 1 -or
-        ([regex]::Matches($html, [regex]::Escape("auralith-agent-host.js"))).Count -ne 1
+        ([regex]::Matches($html, [regex]::Escape("auralith-agent-host.js"))).Count -ne 1 -or
+        ($editorHost.Kind -eq "document" -and
+            ([regex]::Matches($html, [regex]::Escape("auralith-agent-write-executor.js"))).Count -ne 1) -or
+        ($editorHost.Kind -ne "document" -and
+            ([regex]::Matches($html, [regex]::Escape("auralith-agent-write-executor.js"))).Count -ne 0)
     ) {
         throw "Editor host injection is not idempotent: $editorIndex"
     }

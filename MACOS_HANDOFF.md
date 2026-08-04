@@ -45,6 +45,22 @@ Unmodified submodules remain on their official repositories.
   pipeline, retrieval, citations, storage and tests.
 - The `plugins/ai-agent` directory name is historical. The editor loads this
   code as a built-in feature without a plugin GUID or plugin-list entry.
+- DOCX Reader conversations now use one durable Agent session per
+  `documentId`. IndexedDB v3 stores ordered user/assistant messages, request
+  and model provenance, per-answer citations and durable citation anchors
+  outside the evictable reader cache.
+- The Reader sidebar renders a compact ChatGPT-style multi-turn thread. Draft
+  streaming remains an ephemeral, explicitly unverified plane; a completed
+  answer becomes visible only after citation validation and durable
+  checkpointing.
+- Model discovery enriches only live API-returned model IDs with validated
+  models.dev metadata. Custom OpenAI-compatible endpoints remain probe-gated,
+  configured routes are never overwritten, and Provider secrets do not enter
+  the catalog or document session.
+- Conversation context uses deterministic head/tail compaction: two recent
+  turns are preferred verbatim, older turns reduce to intent, bounded answer
+  excerpts and source IDs that must be revalidated. Conversation memory is
+  never document evidence. See `AURALITH_DOCUMENT_AGENT.md`.
 
 The current Windows test build can exercise the editor-level Agent. A fully
 native start-page/title-bar integration still requires rebuilding the Qt
@@ -82,6 +98,78 @@ git -C desktop-sdk fetch upstream
 
 ## Verification baseline
 
+Run the root cross-submodule verifier before committing a gitlink and again
+before installing a test application:
+
+```bash
+# Local gitlink evidence plus focused contracts/tests/build (default)
+bash tools/verify-auralith.sh fast
+
+# Also prove each exact gitlink is fetchable from its Yecyi fork
+bash tools/verify-auralith.sh fast --network
+
+# Full Agent E2E, Auralith SDKJS QUnit pages and isolated Word Closure compile
+bash tools/verify-auralith.sh full --network
+```
+
+The verifier requires Node.js 20. Its Vite and Closure outputs, Playwright
+artifacts and network-fetch probes live under a temporary directory that is
+removed on exit. It never runs the Agent deploy-packaging script and does not
+overwrite tracked or packaged deploy assets.
+
+The 2026-08-04 cowork-safety and macOS installation checkpoint completed:
+
+- Node.js 20 Agent Vitest: 105 files, 1,446/1,446 tests
+- Agent and Reader TypeScript checks
+- Biome: 407 source files clean with warnings treated as errors
+- Host write-executor tests: 17/17; typed Office capability tests: 16/16
+- production `npx vite build`: 3,290 transformed modules, followed by the
+  built-in deploy packaging script
+- full Chromium Playwright E2E: 254/254
+- SDKJS QUnit: remote collaborative apply 9 tests/145 assertions,
+  `pluginsApi` 36/383, and multimodal snapshot 28/315; the remote suite is
+  registered in `sdkjs/tests/runAll.js`
+- desktop Word Closure compile with the required desktop/whitespace-only shape
+- isolated Test app deploy: 308/308 selected files verified before and after
+  signing, including an exact 302-file Agent tree, Host JS/CSS/executor, a
+  derived production Document Editor index, and both Word SDK bundles
+- the production index remained based on the 124 KB packaged page and gained
+  exactly one executor script before the Host script; it still loads
+  `require(['app'])` and contains no `app_dev`
+- strict deep ad-hoc code-sign verification passed; bundle id remains
+  `com.auralith.editer.test`
+
+The recoverable pre-install snapshot is:
+
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260804-221812`
+
+It contains a full APFS clone of the previously signed app, the selected-file
+manifest, signing logs, and the one-line production-index diff. The final
+308-file installation-manifest SHA-256 is
+`8b83fc902ff445879ab644a980fd1359accae0d844e15fb0687dece58b8a2346`.
+
+The app was deliberately not launched because the macOS console remained
+locked. Static package, hash, production-entry, bundle metadata, and signature
+checks are current; native GUI interaction remains unobserved. The production
+formatting gate also remains false, so this installation is not evidence for
+an enabled inspect/approve/apply path.
+
+The 2026-07-28 macOS Agent checkpoint completed:
+
+- TypeScript and Reader TypeScript checks
+- Vitest: 1,266/1,266
+- document-reader tests: 406/406
+- reader coverage: 94.87% statements, 85.57% branches, 95.84% lines
+- Biome: 382 source files clean with warnings treated as errors
+- production `npx vite build`
+- live models.dev catalog parse: 172 providers, including 42 OpenAI and 15
+  Anthropic models at the tested revision
+- isolated Test app deploy: 302/302 files exact, strict deep code-sign valid,
+  bundle id `com.auralith.editer.test`
+- CLI launch with `04-inline-image-caption.docx` remained healthy; final
+  visual/interaction inspection was deferred because the Mac login session was
+  locked
+
 The last Windows validation completed:
 
 - TypeScript compilation
@@ -100,5 +188,18 @@ npm install
 npx vitest run
 npx vite build
 ```
+
+When rebuilding the Word SDK for the macOS desktop application, preserve the
+desktop, whitespace-only bundle shape expected by the embedded editor:
+
+```bash
+cd sdkjs/build
+npx grunt compile-word --desktop --level=WHITESPACE_ONLY --formatting=PRETTY_PRINT
+```
+
+Do not install the default `npx grunt compile-word` output into a desktop app.
+That command produces a substantially smaller advanced-compiled bundle for a
+different deployment profile and the macOS editor will fail to open DOCX files
+when it replaces the desktop bundle.
 
 The development launcher is also described in `.claude/launch.json`.
