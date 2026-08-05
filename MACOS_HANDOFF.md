@@ -133,6 +133,35 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
+The current 2026-08-05 checkpoint was run with Node.js 20.19.5 against the
+fetchable gitlinks `desktop-sdk@1e44728a11ab`, `web-apps@d30660f5b575`, and
+`sdkjs@15ee35482fcf`:
+
+- all three TypeScript configurations and Biome over 488 source files passed;
+- Agent Vitest passed 138 files and 1,564/1,564 tests;
+- Host write profiles/runtime/executor/transport passed 74/74 Node tests;
+- Chromium Playwright passed 272/272, including deterministic locale, 280 px
+  RTL containment, provider synchronization, Host, Reader, settings, and
+  visual gates;
+- focused typed-write QUnit passed paragraph 14/67, comment 21/150, list
+  13/85, table-cell 16/122, and remote cowork 24/262; the full registered run
+  also passed `pluginsApi` 36/383 and multimodal snapshot 28/335;
+- the isolated desktop Word Closure compile and isolated Agent Vite build
+  passed; the verifier wrote no tracked or packaged deploy assets.
+
+Both `--stage-only` and the explicit `--install` transaction then completed.
+The installed bundle at
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app` passed payload,
+production-entry, bundle-shape, deep ad-hoc signature, and designated-
+requirement checks. The recoverable pre-swap copy is:
+
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260805-164918`
+
+The macOS console was locked when native interaction testing began, so the
+installed app's inspect -> authorize -> approve -> apply/fail/cancel -> Undo
+GUI run remains unobserved. Static/build/install evidence MUST NOT be presented
+as that final runtime evidence.
+
 The following 2026-08-04 cowork-safety and macOS installation checkpoint is a
 historical baseline. It predates the five production selection-write paths and
 MUST NOT be reported as the current branch's final verification:
@@ -166,12 +195,11 @@ manifest, signing logs, and the one-line production-index diff. The final
 308-file installation-manifest SHA-256 is
 `8b83fc902ff445879ab644a980fd1359accae0d844e15fb0687dece58b8a2346`.
 
-The app was deliberately not launched because the macOS console remained
-locked. That old package's static hash, production entry, bundle metadata and
-signature checks do not certify the current source. The source production gate
-is now enabled for the five declared capabilities, but the current app still
-requires a fresh stage/install and an observed inspect -> authorize -> approve
--> apply/fail/cancel -> Undo GUI E2E before release readiness can be claimed.
+That historical app was deliberately not launched because the macOS console
+remained locked. Its static hash, production entry, bundle metadata and
+signature checks do not certify the current source. The 2026-08-05 checkpoint
+above supersedes its stage/install status; only the observed installed-app GUI
+E2E remains pending before release readiness can be claimed.
 
 The 2026-07-28 macOS Agent checkpoint completed:
 

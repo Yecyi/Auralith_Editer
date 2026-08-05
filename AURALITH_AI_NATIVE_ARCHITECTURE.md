@@ -1,8 +1,8 @@
 # Auralith AI-native Office architecture
 
 Status: normative architecture and delivery contract
-Implementation status refreshed: 2026-08-05; current full verification and
-installed-app GUI evidence are pending final refresh
+Implementation status refreshed: 2026-08-05; full automated verification and
+test-app installation passed, while installed-app GUI evidence remains pending
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
 Office capabilities. It covers SDKJS document semantics, editor context,
@@ -93,8 +93,8 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Diagram document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Page/node context, semantic graph contract, selection identity, and mutation semantics |
 | Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; Button/Checkbox contracts and tool-approval keyboard safety are now enforced | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
-| macOS isolated test-app installation | partial | repository tooling implemented; current run pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks | Execute the current stage/install transaction and installed-app GUI E2E; public release certification |
-| Cross-submodule verification | partial | repository command implemented; current full run pending | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Run after final submodule SHAs and add hosted CI/artifact publication |
+| macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; GUI E2E pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260805-164918` | Installed-app GUI E2E and public release certification |
+| Cross-submodule verification | native, repository-gate scope | fast/full verified at exact pushed gitlinks | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Hosted CI and artifact publication |
 
 ### Production Word selection-write boundary
 
@@ -150,20 +150,26 @@ The 2026-08-04 counts and installation hash predate the five-capability
 production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
-The current branch has focused source-level evidence for the registry,
-dedicated receipt transport, Host profiles/executor, Reader commands and UI,
-SDKJS transactions, scoped locks, rollback/Undo, and no-retry outcomes. Final
-Node.js 20 counts for TypeScript, Biome, Vitest, Host Node suites, Playwright,
-SDKJS QUnit, Closure, Vite and the root cross-submodule verifier are pending a
-single final run and will be recorded here afterward.
+The current branch was verified with Node.js 20.19.5 at exact fetchable gitlinks
+`desktop-sdk@1e44728a11ab`, `web-apps@d30660f5b575`, and
+`sdkjs@15ee35482fcf`. All three TypeScript configurations and Biome over 488
+source files passed. Agent Vitest passed 138 files and 1,564/1,564 tests; Host
+profiles/runtime/executor/transport passed 74/74; Chromium Playwright passed
+272/272. Focused SDKJS typed-write/cowork QUnit passed paragraph 14/67,
+comment 21/150, list 13/85, table-cell 16/122, and remote cowork 24/262; the
+full registered run also passed `pluginsApi` 36/383 and multimodal snapshot
+28/335. The isolated desktop Word Closure compile, isolated Agent Vite build,
+and both fast/full root verifiers with network fetch probes passed without
+writing tracked or packaged deploy assets.
 
 The repository now contains guarded macOS and Windows test installers. The
-macOS installer uses a fixed user-local test target, isolated Vite and SDKJS
-build roots, a payload hash manifest, same-volume transactional replacement,
-rollback and strict deep signing checks. This current source has not yet been
-certified by an installed-app GUI interaction run. No inspect/approve/apply,
-failure/cancel, conflict or Undo result is claimed here until observed on the
-new installed build.
+macOS `--stage-only` and explicit `--install` paths completed for the fixed
+user-local Test.app using isolated Vite and SDKJS builds, payload checks,
+same-volume transactional replacement, rollback, and strict deep signing. The
+recoverable copy is `Auralith_Editer Test.app.rollback/20260805-164918`. The
+macOS console was locked when native interaction testing began, so no
+inspect/approve/apply, failure/cancel, conflict, or Undo GUI result is claimed
+here until it is observed on that installed build.
 
 ## Target architecture
 

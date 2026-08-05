@@ -145,7 +145,7 @@ B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区�
 
 SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资源/世代/owner 保护；那条 incoming replay 路径与 Agent 发出的 scoped-lock 写入不是同一个事务。
 
-上述 production 源码路径已接通，但已安装应用中的 inspect → authorize → approve → apply/fail/cancel → Undo GUI E2E 仍需在当前构建上最终执行和记录。在完成该证据前，应把能力描述为“production path connected, release verification pending”，而不是已完成安装版认证。
+上述 production 源码路径已接通，当前源码也已通过完整自动化门禁并事务安装到专用 Test.app；但 macOS 控制台锁定阻止了真实窗口中的 inspect → authorize → approve → apply/fail/cancel → Undo GUI E2E。在完成该证据前，应把能力描述为“production path connected, automated and installed-build verification passed, installed GUI verification pending”，而不是已完成安装版认证。
 
 ## 新增文件格式的实施契约
 
@@ -158,9 +158,11 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 
 ## 测试边界
 
-2026-08-04 的数字仅是旧基线，不再作为这次五能力接通后的当前结果。当前分支的 Node.js 20 源码、Host、Reader、SDKJS QUnit、Closure、Vite、Playwright、跨子模块和安装器验证数字待最终完整验证后统一刷新。
+2026-08-05 当前结果：Node.js 20.19.5；三套 TypeScript 通过；Biome 488 个源码文件通过；Agent Vitest 138 个文件、1,564/1,564；Host write profiles/runtime/executor/transport 74/74；Chromium Playwright 272/272。SDKJS typed-write/cowork QUnit 通过 paragraph 14/67、comment 21/150、list 13/85、table-cell 16/122、remote cowork 24/262，完整注册运行另通过 `pluginsApi` 36/383 与 multimodal snapshot 28/335。隔离 desktop Word Closure、隔离 Vite、fast/full `--network` 根验证器、macOS `--stage-only` 和事务 `--install` 全部通过；精确 gitlink 为 `desktop-sdk@1e44728a11ab`、`web-apps@d30660f5b575`、`sdkjs@15ee35482fcf`。
 
-源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host approval/executor、五个 Reader 操作链和 no-pause scoped-lock 路径。这些事实仍不等同于已安装应用的 GUI 运行时 E2E；未执行的安装版测试不得推断为通过。
+当前 Test.app 的安装回滚点是 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260805-164918`。安装后的 payload、production entry、bundle shape、深层 ad-hoc 签名和 designated requirement 已验证；真实 GUI 交互仍因 macOS 控制台锁定而待执行。
+
+源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host approval/executor、五个 Reader 操作链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
 
 - Harness/Prompt 单元测试覆盖状态机、取消、能力、Evidence、ToolPolicy、格式冲突、降级和提示注入。
 - Model Center 测试覆盖 endpoint 身份轮换、能力隔离、密钥引用迁移和模型目录竞态。
