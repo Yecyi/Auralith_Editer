@@ -201,8 +201,13 @@ readonly AGENT_REGISTRY="$AGENT_ROOT/src/office-tools/office-capabilities.json"
 readonly SDKJS_ROOT="$WORKSPACE_ROOT/sdkjs"
 readonly SDKJS_GRUNTFILE="$SDKJS_ROOT/build/Gruntfile.js"
 readonly WEB_APPS_COMMON="$WORKSPACE_ROOT/web-apps/apps/common/main/lib"
+readonly HOST_RUNTIME_JS="$WEB_APPS_COMMON/auralith-agent-host-runtime.js"
 readonly HOST_JS="$WEB_APPS_COMMON/auralith-agent-host.js"
 readonly HOST_CSS="$WEB_APPS_COMMON/auralith-agent-host.css"
+readonly HOST_TOKENS_CSS="$WEB_APPS_COMMON/auralith-agent-host-tokens.css"
+readonly HOST_BASE_LAYOUT_CSS="$WEB_APPS_COMMON/auralith-agent-host-base-layout.css"
+readonly HOST_WRITE_APPROVAL_CSS="$WEB_APPS_COMMON/auralith-agent-host-write-approval.css"
+readonly WRITE_PROFILES_JS="$WEB_APPS_COMMON/auralith-agent-write-profiles.js"
 readonly WRITE_EXECUTOR_JS="$WEB_APPS_COMMON/auralith-agent-write-executor.js"
 readonly WRITE_TRANSPORT_JS="$WEB_APPS_COMMON/auralith-agent-write-transport.js"
 
@@ -214,13 +219,20 @@ assert_source_inputs() {
     require_file "$SDKJS_GRUNTFILE"
     require_file "$SDKJS_ROOT/build/license.header"
     require_file "$SDKJS_ROOT/build/node_modules/.bin/grunt"
+    require_file "$HOST_RUNTIME_JS"
     require_file "$HOST_JS"
     require_file "$HOST_CSS"
+    require_file "$HOST_TOKENS_CSS"
+    require_file "$HOST_BASE_LAYOUT_CSS"
+    require_file "$HOST_WRITE_APPROVAL_CSS"
+    require_file "$WRITE_PROFILES_JS"
     require_file "$WRITE_EXECUTOR_JS"
     require_file "$WRITE_TRANSPORT_JS"
     require_file "$AGENT_ROOT/node_modules/.bin/vite"
 
+    node --check "$HOST_RUNTIME_JS"
     node --check "$HOST_JS"
+    node --check "$WRITE_PROFILES_JS"
     node --check "$WRITE_EXECUTOR_JS"
     node --check "$WRITE_TRANSPORT_JS"
     node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' \
@@ -261,8 +273,13 @@ if mode == "generate-payload":
         "Contents/Info.plist",
         "Contents/Resources/editors/sdkjs/word/sdk-all-min.js",
         "Contents/Resources/editors/sdkjs/word/sdk-all.js",
+        "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-host-runtime.js",
         "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-host.js",
         "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-host.css",
+        "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-host-tokens.css",
+        "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-host-base-layout.css",
+        "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-host-write-approval.css",
+        "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-write-profiles.js",
         "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-write-executor.js",
         "Contents/Resources/editors/web-apps/apps/common/main/lib/auralith-agent-write-transport.js",
     ]
@@ -423,6 +440,8 @@ hosts = {
 asset_patterns = (
     r"\s*<!--\s*Auralith Agent built-in host\s*-->\s*",
     r"\s*<link\b[^>]*auralith-agent-host\.css[^>]*>\s*",
+    r"\s*<script\b[^>]*auralith-agent-host-runtime\.js[^>]*>\s*</script>\s*",
+    r"\s*<script\b[^>]*auralith-agent-write-profiles\.js[^>]*>\s*</script>\s*",
     r"\s*<script\b[^>]*auralith-agent-write-executor\.js[^>]*>\s*</script>\s*",
     r"\s*<script\b[^>]*auralith-agent-write-transport\.js[^>]*>\s*</script>\s*",
     r"\s*<script\b[^>]*auralith-agent-host\.js[^>]*>\s*</script>\s*",
@@ -439,6 +458,13 @@ for editor, kind in hosts.items():
         html = re.sub(pattern, "\n", html, flags=re.IGNORECASE)
 
     scripts = []
+    if kind == "document":
+        scripts.append(
+            '    <script src="../../common/main/lib/auralith-agent-write-profiles.js"></script>'
+        )
+    scripts.append(
+        '    <script src="../../common/main/lib/auralith-agent-host-runtime.js"></script>'
+    )
     if kind == "document":
         scripts.extend(
             [
@@ -476,8 +502,13 @@ assemble_staged_app() {
     ditto "$TARGET_APP" "$staged_app"
     rm -rf "$agent_target"
     ditto "$agent_build" "$agent_target"
+    cp "$HOST_RUNTIME_JS" "$common_main/lib/auralith-agent-host-runtime.js"
     cp "$HOST_JS" "$common_main/lib/auralith-agent-host.js"
     cp "$HOST_CSS" "$common_main/lib/auralith-agent-host.css"
+    cp "$HOST_TOKENS_CSS" "$common_main/lib/auralith-agent-host-tokens.css"
+    cp "$HOST_BASE_LAYOUT_CSS" "$common_main/lib/auralith-agent-host-base-layout.css"
+    cp "$HOST_WRITE_APPROVAL_CSS" "$common_main/lib/auralith-agent-host-write-approval.css"
+    cp "$WRITE_PROFILES_JS" "$common_main/lib/auralith-agent-write-profiles.js"
     cp "$WRITE_EXECUTOR_JS" "$common_main/lib/auralith-agent-write-executor.js"
     cp "$WRITE_TRANSPORT_JS" "$common_main/lib/auralith-agent-write-transport.js"
     cp "$sdkjs_isolated/deploy/sdkjs/word/sdk-all-min.js" "$word_target/sdk-all-min.js"
@@ -508,22 +539,30 @@ for editor, kind in editors.items():
         raise SystemExit(f"Non-production entry detected: {index}")
     counts = {
         "style": html.count("auralith-agent-host.css"),
+        "runtime": html.count("auralith-agent-host-runtime.js"),
+        "profiles": html.count("auralith-agent-write-profiles.js"),
         "executor": html.count("auralith-agent-write-executor.js"),
         "transport": html.count("auralith-agent-write-transport.js"),
         "host": html.count("auralith-agent-host.js"),
     }
-    if counts["style"] != 1 or counts["host"] != 1:
+    if counts["style"] != 1 or counts["runtime"] != 1 or counts["host"] != 1:
         raise SystemExit(f"Host injection is not unique in {index}: {counts}")
+    runtime = html.index("auralith-agent-host-runtime.js")
     if kind == "document":
-        if counts["executor"] != 1 or counts["transport"] != 1:
+        if counts["profiles"] != 1 or counts["executor"] != 1 or counts["transport"] != 1:
             raise SystemExit(f"Document write transport injection is invalid in {index}: {counts}")
+        profiles = html.index("auralith-agent-write-profiles.js")
         executor = html.index("auralith-agent-write-executor.js")
         transport = html.index("auralith-agent-write-transport.js")
         host = html.index("auralith-agent-host.js")
-        if not executor < transport < host:
-            raise SystemExit(f"Expected executor < transport < host in {index}")
-    elif counts["executor"] or counts["transport"]:
+        if not profiles < runtime < executor < transport < host:
+            raise SystemExit(
+                f"Expected profiles < runtime < executor < transport < host in {index}"
+            )
+    elif counts["profiles"] or counts["executor"] or counts["transport"]:
         raise SystemExit(f"Write transport leaked into non-DOCX editor index: {index}")
+    elif not runtime < html.index("auralith-agent-host.js"):
+        raise SystemExit(f"Expected runtime < host in {index}")
 PY
 }
 
@@ -559,10 +598,20 @@ verify_staged_app() {
     validate_agent_build "$common_main/auralith-agent"
     diff -qr "$agent_build" "$common_main/auralith-agent" >/dev/null ||
         die "Installed Agent tree differs from the temporary Vite build."
+    cmp -s "$HOST_RUNTIME_JS" "$common_main/lib/auralith-agent-host-runtime.js" ||
+        die "Host runtime JS copy verification failed."
     cmp -s "$HOST_JS" "$common_main/lib/auralith-agent-host.js" ||
         die "Host JS copy verification failed."
     cmp -s "$HOST_CSS" "$common_main/lib/auralith-agent-host.css" ||
         die "Host CSS copy verification failed."
+    cmp -s "$HOST_TOKENS_CSS" "$common_main/lib/auralith-agent-host-tokens.css" ||
+        die "Host token CSS copy verification failed."
+    cmp -s "$HOST_BASE_LAYOUT_CSS" "$common_main/lib/auralith-agent-host-base-layout.css" ||
+        die "Host base layout CSS copy verification failed."
+    cmp -s "$HOST_WRITE_APPROVAL_CSS" "$common_main/lib/auralith-agent-host-write-approval.css" ||
+        die "Host write approval CSS copy verification failed."
+    cmp -s "$WRITE_PROFILES_JS" "$common_main/lib/auralith-agent-write-profiles.js" ||
+        die "Write profiles copy verification failed."
     cmp -s "$WRITE_EXECUTOR_JS" "$common_main/lib/auralith-agent-write-executor.js" ||
         die "Write executor copy verification failed."
     cmp -s "$WRITE_TRANSPORT_JS" "$common_main/lib/auralith-agent-write-transport.js" ||

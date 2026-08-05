@@ -90,7 +90,7 @@ DOCX 是首个真实适配器：
 
 Spreadsheet、Presentation、PDF 与 Diagram 已有上下文契约和 Prompt Profile，但对象读取 Adapter 尚未实现；在 Adapter 注册前，General Harness 会返回不支持，而不是把它们误当成 DOCX。
 
-## 受控文字格式接口
+## 受控 Word 选区写入接口
 
 SDKJS Word 层提供首个可扩展写入契约：
 
@@ -111,7 +111,7 @@ SDKJS Word 层提供首个可扩展写入契约：
 
 文字格式读取覆盖普通、East Asian 与 complex-script 字体槽。只有 `Bold/BoldCS`、`Italic/ItalicCS`、`FontSize/FontSizeCS` 及 Ascii/HAnsi/EastAsia/CS 字体族一致时才返回统一值；否则返回 `mixed`，不会把中文或阿拉伯文格式错误折叠成 ASCII 槽。写入会同步这些槽。SDKJS 原有的段落标记 `ItalicCS` 历史变更类型也已修正，从而保持读取、写入和 Undo 对称。
 
-当前同步 V1 只执行单用户编辑事务。网络协作需要等待宿主的异步锁回调，因此会稳定返回 `ASYNC_LOCK_REQUIRED`，不会在服务器尚未授权时报告成功。字体族也必须在编辑器精确字体目录中存在，且此次粗体/斜体组合所需的底层字体文件已经加载；未知、加载中、加载失败或 DOCX 不支持的嵌入字体返回 `FONT_UNAVAILABLE`，不会静默回退字体后仍报告成功。
+字体资源的解析和预加载在无锁阶段完成；网络协作下的写入只在最后一个很短的、按真实目标闭包计算的 scoped-lock 临界区内复核 revision、执行 mutation 和验证结果。人类用户在模型思考、审批和远程锁等待期间仍可编辑文档。字体族必须在编辑器精确字体目录中存在；未知、加载中、加载失败或 DOCX 不支持的嵌入字体返回 `FONT_UNAVAILABLE`，不会静默回退后报告成功。
 
 组合补丁使用专用历史描述并拒绝嵌套编辑事务。写入后先在尚未 Finalize 的 action 内读取并验证所有请求属性；不一致会尝试 Cancel + Finalize。只有原生目标和事务状态能够精确证明恢复时，才可以把这次尝试报告为已回滚；聚合格式值再次相等不是充分证明。只要 mutation kernel 已经尝试写入而恢复证明不完整，就返回不可自动重试的 `VERIFY_FAILED`，发布 unknown/full-rescan delta，且不得声称 `changed: false` 或净变化为零。仅在 mutation kernel 尚未写入的竞态中，才可以证明 stale/net-zero。Finalize 本身异常时会应急关闭本次事务拥有的 action、恢复 selection/recalculation 等编辑器状态，并且绝不盲目调用普通 Undo，因为该 history point 可能已经暴露给后续用户编辑。若补丁原本已全部满足，则返回 `changed: false`，不创建历史点也不递增内容版本。删除线读取把 SDKJS 的单删除线与双删除线都视为“已删除线”，因此 `{strikeout: false}` 不会把双删除线误判为无操作。
 
@@ -123,32 +123,29 @@ V1 仅允许 `all-or-nothing`。任一 target 无法解析、权限/保护/锁�
 
 B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区分 content / structure / location / presentation 指纹，同时保留总 `blocks` change set 兼容旧消费者。它不会放松增量读取门槛；只有连续、本地、单段落的纯文字 delta 走增量路径，未知、混合、非本地、revision gap、overflow、fullRescan 或 layout pending 仍完整刷新。由于当前 DOCX 快照尚未输出 run-level font/color/size，此能力不应被描述为“真实格式修改已经零索引成本”。
 
-### 本地 cowork 与远程协作边界
+### 五个已接通的选区写能力
 
-本地读取和单用户格式事务已经采用快照隔离：模型基于不可变快照生成时，用户可以继续输入；格式写入使用冻结目标，在提交前只接受可证明不相交的 revision rebase，并在 `finally` 恢复用户当时的实时光标/选区。它的临界区是同步的 SDKJS mutation，不包含网络等待。
+源码中的 production capability registry 已启用下列五个能力。它们都经过专用的 SDKJS 方法、有界 schema、Host write profile/executor、不透明一次性 receipt transport、Harness descriptor/runtime authorizer 和 Reader 端审批流转；写入不进入五方法的只读快照 RPC allowlist，也不向 iframe 暴露 selection token、revision、SDKJS 方法名或原始文档定位。
 
-网络协作分为两个不同方向，不能混为一个“远程写入已完成”的能力：
+| Capability | 当前严格范围 | SDKJS operations |
+| --- | --- | --- |
+| `document.selection-formatting@1.1` | 选区加粗、斜体、下划线、删除线、字体、point 字号、文字色和高亮 | `GetSelectionTextFormatting` / `ApplySelectionTextFormatting` |
+| `document.selection-paragraph-formatting@1.0` | 最多 256 个段落的对齐、段前/段后、行距、左右和首行缩进 | `GetSelectionParagraphFormatting` / `ApplySelectionParagraphFormatting` |
+| `document.selection-list-formatting@1.0` | 仅对主文档中已存在的项目符号/编号列表设置 0..8 内部层级，最多 128 个段落 | `GetSelectionListFormatting` / `ApplySelectionListFormatting` |
+| `document.comment@1.0` | 在主文档的精确非空选区上添加具有 Host 端 Auralith 身份的原生批注；审批绑定精确 quote | `GetSelectionCommentTarget` / `AddSelectionComment` |
+| `document.selection-table-cell-text@1.0` | **只支持单一 simple unmerged cell 的全部纯文本替换**：单段落、单普通 run、无字段/超链接/数学/图形/批注/嵌套表格/SDT，新文本最多 4096 UTF-16 code units，不含换行和控制字符 | `GetSelectionTableCellTextTarget` / `ReplaceSelectionTableCellText` |
 
-- Agent 发出的 selection-formatting 写入仍需要异步服务器锁，当前稳定返回 `ASYNC_LOCK_REQUIRED`，没有生产 transport，也没有启用远程 apply。
-- SDKJS 接收并回放已有协作变更的路径已经做 fail-closed 加固：FontLoader、recalculation pause 或 `isSaveFonts_Images` 已忙时，会在 mutation 前无所有权地延迟并受超时约束；已有 Auralith resource ticket/receipt 则拒绝覆盖。入口、observer、Undo、`Apply_OtherChanges` 和资源交接后都会复核 batch、document generation 与 API owner；Undo 在产生效果前消费且冻结，部分 Undo 或部分 `Apply_Data` 失败会丢弃不确定队列、发布保守 delta、释放其拥有的资源，并锁存为需要 reload/resync，禁止继续远程写。
-- 字体/图片回调携带不可变的 batch、generation、owner 和 editor API receipt；旧 URL 回调不能落入替换后的 API。资源加载等待有 120 秒 watchdog，超时只执行一次 terminal completion，释放本批次拥有的 global/selection/recalculation/interaction 状态，并拒绝迟到 receipt。文档替换会终止仍处于 starting/awaiting 的 generation-bound batch；finishing 中的同步重入替换会在每个语义步骤后失效旧 batch，停止后续 recalc/update/form，把 unknown delta 与错误留在旧 document/API，且只释放旧 owner。
+每个选区写任务都使用不可变的 Host-owned preview 和一次性 receipt。只能在 executor 派发前取消；派发后 SDKJS/Host 权威结果必须保留。`committed` 或 `commitState: unknown` 都是不可自动重试的终态；会话层不能把它们降级成取消或可重试失败。一个已批准意图仅生成一个 SDKJS 原生 LIFO history point；只要该 point 仍在栈顶，一次普通 Undo 整体撤销，不存在隐藏的 Agent 专用 Undo 栈或可寻址 Undo token。
 
-这些措施提高的是“已收到远程变更的失败安全性”，不是 no-pause cowork。当前回放在异步字体/图片加载期间仍可能持有全局交互锁、选区锁和 recalculation pause。真正的远程 no-pause 仍需在无锁阶段预解析/预加载资源，再复核 generation、revision 与目标区域，最后只在很短的 mutation 临界区获取 scoped lock。
+### no-pause cowork 与保守冲突边界
 
-Agent 侧对应的 Host Tool 描述为：
+读取、模型生成、审批和资源预加载不获取文档交互锁。批准后先复核目标 revision，再只申请冻结 target closure 需要的远程 scoped locks；锁回调后再复核一次，然后在不包含网络等待的同步 mutation 临界区中完成写入、postcondition 验证和 Finalize，并在 `finally` 恢复人类当时的实时光标/选区。连续、有界、可解释且与目标闭包不相交的变更可 rebase；相交、revision gap、unknown、overflow、full-rescan 或模糊定位会在 mutation 前 fail-closed。
 
-```text
-document.selection-formatting / inspect → read
-document.selection-formatting / apply   → write
-```
+当前表格变更源尚只能保守地标记 table-level region。因此，人类修改同一表格的其他单元格时，待写 token 也会被当作冲突；它会安全地返回 stale/conflict，不会暂停用户或写错单元格。在变更流增加持久 cell identity 之前，不得放宽这个保守边界。
 
-类型化契约和 Host-owned client 位于：
+SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资源/世代/owner 保护；那条 incoming replay 路径与 Agent 发出的 scoped-lock 写入不是同一个事务。
 
-`desktop-sdk/ChromiumBasedEditors/plugins/ai-agent/src/office-tools/selection-text-formatting.ts`
-
-General Harness 已把取消分成两个确定性阶段：`read` 保留普通协作取消；`write / network / execute` 只允许在 executor 派发前取消。一旦进入潜在不可逆派发，`cancelTask` 返回 `false`，调用方 AbortSignal 与 `closeSession` 不再中断内部 executor。executor 的 fulfilled 结果保持权威；reject 会锁存为 `TOOL_EXECUTION_UNCERTAIN`（`commitState: unknown`、`retryable: false`），即使 handler 捕获该错误也不能把任务继续标成成功。这个契约防止把已提交操作误报为取消并自动重试，但生产 formatting transport 尚未注册，因此仍需把 Host receipt 和 SDKJS 权威结果端到端接入后才能启用。
-
-当前生产 Reader 仍为 `deny-all`，内置 iframe 的五方法快照桥也仍保持只读。Host Tool Executor、真实宿主上下文和非模态用户审批卡已经实现，但保持在 false production gate 后；selection token、revision 和 SDK 方法名都不会暴露给 Reader。启用 `apply` 前仍必须完成独立 edit task、专用生产工具 transport、生产 Harness descriptor 注册、真实 runtime authorizer（宿主能力可用性与一次性审批）、将上述 cancellation boundary 接到真实 Host receipt/SDKJS result、不会冻结画布的远程 scoped lock，以及已安装应用中的 inspect → approve → apply/failure/stale/read-only/lock/cancel/Undo E2E。模型输出不得直接调用 SDKJS 写接口，任何 prompt 或 UI 也不得宣称已经具备生产写入或远程 no-pause 能力。
+上述 production 源码路径已接通，但已安装应用中的 inspect → authorize → approve → apply/fail/cancel → Undo GUI E2E 仍需在当前构建上最终执行和记录。在完成该证据前，应把能力描述为“production path connected, release verification pending”，而不是已完成安装版认证。
 
 ## 新增文件格式的实施契约
 
@@ -161,13 +158,13 @@ General Harness 已把取消分成两个确定性阶段：`read` 保留普通协
 
 ## 测试边界
 
-2026-08-04 的 Node.js 20 源码/测试构建验证通过：Agent Vitest 105 个文件、1446 个测试；Agent 与 Reader TypeScript；Biome 407 个文件；Host write executor 17/17；typed Office selection-formatting 16/16；Vite 3290 个 transformed modules；完整 Chromium Playwright E2E 254/254。SDKJS QUnit 通过 incoming remote-collaboration 9 个测试、145 个断言，既有 `pluginsApi` 36 个测试、383 个断言，以及 multimodal snapshot 28 个测试、315 个断言；desktop Word Closure 编译通过。
+2026-08-04 的数字仅是旧基线，不再作为这次五能力接通后的当前结果。当前分支的 Node.js 20 源码、Host、Reader、SDKJS QUnit、Closure、Vite、Playwright、跨子模块和安装器验证数字待最终完整验证后统一刷新。
 
-上述结果证明当前源码契约与测试夹具，不等同于已安装应用的生产写入运行时 E2E。专用 transport、生产注册、真实 authorizer、取消路径和 no-pause 远程锁尚未连通，因此 production write gate 继续关闭。
+源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host approval/executor、五个 Reader 操作链和 no-pause scoped-lock 路径。这些事实仍不等同于已安装应用的 GUI 运行时 E2E；未执行的安装版测试不得推断为通过。
 
 - Harness/Prompt 单元测试覆盖状态机、取消、能力、Evidence、ToolPolicy、格式冲突、降级和提示注入。
 - Model Center 测试覆盖 endpoint 身份轮换、能力隔离、密钥引用迁移和模型目录竞态。
 - DOCX 专用读取管线覆盖快照一致性、视觉缓存隔离、Provider Session 隔离、能力探测和来源引用。
 - Playwright 覆盖“模型中心选择模型 → DOCX 读取”以及五种编辑器宿主。
 - SDKJS QUnit 覆盖轻量 preflight 与完整快照的执行边界。
-- 文字格式契约覆盖严格输入、mixed 值、单次 token、原生位置绑定、版本/选区过期、无副作用读取、协作 fail-closed、精确字体、事务回滚、point 字号、组合补丁和单步 Undo。
+- 五个选区写契约覆盖严格输入、mixed/结构状态、单次 token、原生位置与 quote 绑定、版本/选区过期、无副作用读取、scoped locks、事务回滚、单个原生 Undo，以及 committed/unknown 结果不重试。

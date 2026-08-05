@@ -37,12 +37,16 @@ Unmodified submodules remain on their official repositories.
 
 - `sdkjs` contains the read-only DOCX multimodal snapshot contract,
   structure/object inventory, asset chunking, stale-version checks and source
-  navigation.
+  navigation, plus the five bounded Word selection-write semantics: text and
+  paragraph formatting, existing-list level, exact-selection comment add, and
+  strict single-simple-cell plain-text replacement.
 - `web-apps` contains the built-in editor host, header entry, advanced
-  settings integration and the restricted snapshot bridge.
+  settings integration, restricted snapshot bridge, closed write profiles,
+  Host-owned approval/executor and dedicated opaque-receipt write transport.
 - `desktop-sdk/ChromiumBasedEditors/plugins/ai-agent` contains the Auralith
   Agent UI, general and DOCX harnesses, provider/model configuration, reader
-  pipeline, retrieval, citations, storage and tests.
+  pipeline, retrieval, citations, storage, typed Office clients, production
+  Harness/runtime authorization and tests.
 - The `plugins/ai-agent` directory name is historical. The editor loads this
   code as a built-in feature without a plugin GUID or plugin-list entry.
 - DOCX Reader conversations now use one durable Agent session per
@@ -61,6 +65,18 @@ Unmodified submodules remain on their official repositories.
   turns are preferred verbatim, older turns reduce to intent, bounded answer
   excerpts and source IDs that must be revalidated. Conversation memory is
   never document evidence. See `AURALITH_DOCUMENT_AGENT.md`.
+- The source production registry enables
+  `document.selection-formatting@1.1`,
+  `document.selection-paragraph-formatting@1.0`,
+  `document.selection-list-formatting@1.0`, `document.comment@1.0`, and
+  `document.selection-table-cell-text@1.0`. Each write uses immutable Host
+  approval, a one-shot receipt, no automatic retry after committed/unknown
+  dispatch, a short target-scoped collaborative lock, and one native LIFO Undo
+  point.
+- Table-cell P0 replaces the complete plain text of exactly one simple,
+  unmerged, top-level cell. It is not a rich-text or structural table editor.
+  The current table-level change feed conservatively treats an edit to another
+  cell in the same table as a conflict.
 
 The current Windows test build can exercise the editor-level Agent. A fully
 native start-page/title-bar integration still requires rebuilding the Qt
@@ -117,7 +133,9 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
-The 2026-08-04 cowork-safety and macOS installation checkpoint completed:
+The following 2026-08-04 cowork-safety and macOS installation checkpoint is a
+historical baseline. It predates the five production selection-write paths and
+MUST NOT be reported as the current branch's final verification:
 
 - Node.js 20 Agent Vitest: 105 files, 1,446/1,446 tests
 - Agent and Reader TypeScript checks
@@ -149,10 +167,11 @@ manifest, signing logs, and the one-line production-index diff. The final
 `8b83fc902ff445879ab644a980fd1359accae0d844e15fb0687dece58b8a2346`.
 
 The app was deliberately not launched because the macOS console remained
-locked. Static package, hash, production-entry, bundle metadata, and signature
-checks are current; native GUI interaction remains unobserved. The production
-formatting gate also remains false, so this installation is not evidence for
-an enabled inspect/approve/apply path.
+locked. That old package's static hash, production entry, bundle metadata and
+signature checks do not certify the current source. The source production gate
+is now enabled for the five declared capabilities, but the current app still
+requires a fresh stage/install and an observed inspect -> authorize -> approve
+-> apply/fail/cancel -> Undo GUI E2E before release readiness can be claimed.
 
 The 2026-07-28 macOS Agent checkpoint completed:
 
@@ -232,7 +251,8 @@ Before installation, the complete current app is copied to a timestamped
 directory under `~/Applications/Auralith_Editer Test.app.rollback`. The staged
 app must pass source-to-target comparisons, payload SHA-256 verification,
 production `require(['app'])`/no-`app_dev` checks, exact
-executor → transport → Host ordering, desktop Word bundle-shape checks, bundle
+write profiles → executor → transport → Host ordering, desktop Word
+bundle-shape checks, bundle
 identity validation, and strict deep ad-hoc signature validation. The final
 replacement uses same-volume renames; if any post-swap check fails, the script
 restores the original app and retains the failed candidate for diagnosis.

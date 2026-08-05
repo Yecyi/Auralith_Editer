@@ -12,7 +12,7 @@ Usage: bash tools/verify-auralith.sh [fast|full] [--network]
 
   fast       Static cross-module checks, focused Agent/Host/SDKJS tests,
              TypeScript checks, and an isolated Vite production build.
-  full       Full Agent unit/E2E checks, all three Auralith SDKJS QUnit pages,
+  full       Full Agent unit/E2E checks, all registered Auralith SDKJS QUnit pages,
              and an isolated desktop Word Closure compile.
   --network  Also prove each root gitlink can be fetched by exact commit from
              its configured Yecyi fork. The default only uses local Git data.
@@ -58,13 +58,40 @@ require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "Required command is unavailable: $1"
 }
 
-require_command git
-require_command node
+activate_node20() {
+    local candidate
+    local -a candidates=()
 
-node_major="$(node -p 'process.versions.node.split(".")[0]')"
-[[ "$node_major" == "20" ]] || fail \
-    "Node.js 20 is required (active: $(node --version)). Activate Node 20 and retry."
-echo "OK Node.js $(node --version)"
+    if command -v node >/dev/null 2>&1; then
+        candidates+=("$(command -v node)")
+    fi
+    candidates+=(
+        "/opt/homebrew/opt/node@20/bin/node"
+        "/usr/local/opt/node@20/bin/node"
+    )
+    shopt -s nullglob
+    candidates+=("$HOME"/.nvm/versions/node/v20*/bin/node)
+    candidates+=("$HOME"/.local/share/mise/installs/node/20*/bin/node)
+    shopt -u nullglob
+
+    for candidate in "${candidates[@]}"; do
+        if [[ -x "$candidate" ]] &&
+            [[ "$($candidate -p 'process.versions.node.split(".")[0]')" == "20" ]]; then
+            local node20_bin_dir
+            node20_bin_dir="$(dirname "$candidate")"
+            [[ -x "$node20_bin_dir/npx" ]] || continue
+            export PATH="$node20_bin_dir:$PATH"
+            hash -r
+            return 0
+        fi
+    done
+    return 1
+}
+
+require_command git
+activate_node20 || fail \
+    "Node.js 20 with its matching npx is required and was not found."
+echo "OK Node.js $(node --version) from $(command -v node)"
 
 temp_base="${TMPDIR:-/tmp}"
 temp_base="${temp_base%/}"
@@ -151,7 +178,14 @@ done
 step "Canonical capability, Host gate, manifest, and SDK build-list consistency"
 node tools/verify-auralith-contracts.mjs
 
-step "Host-owned selection-formatting executor and receipt transport"
+step "Host runtime, selection-formatting executor, and receipt transport"
+node --check web-apps/apps/common/main/lib/auralith-agent-write-profiles.js
+node --check web-apps/apps/common/main/lib/auralith-agent-host-runtime.js
+node --check web-apps/apps/common/main/lib/auralith-agent-write-executor.js
+node --check web-apps/apps/common/main/lib/auralith-agent-write-transport.js
+node --check web-apps/apps/common/main/lib/auralith-agent-host.js
+node web-apps/test/unit-tests/auralith-agent-write-profiles.test.js
+node web-apps/test/unit-tests/auralith-agent-host-runtime.test.js
 node web-apps/test/unit-tests/auralith-agent-write-executor.test.js
 node web-apps/test/unit-tests/auralith-agent-write-transport.test.js
 
@@ -162,6 +196,10 @@ for file in \
     sdkjs/word/Editor/document/content-change-feed.js \
     sdkjs/word/Editor/document/multimodal-snapshot.js \
     sdkjs/word/Editor/document/selection-text-formatting.js \
+    sdkjs/word/Editor/document/selection-paragraph-formatting.js \
+    sdkjs/word/Editor/document/selection-comment.js \
+    sdkjs/word/Editor/document/selection-list-formatting.js \
+    sdkjs/word/Editor/document/selection-table-cell-text.js \
     sdkjs/word/api_plugins.js \
     sdkjs/tests/word/plugins/remoteCollaborativeApply.js; do
     node --check "$file"
@@ -192,15 +230,44 @@ if [[ "$mode" == "fast" ]]; then
             src/office-tools/office-capability-manifest.test.ts \
             src/office-tools/office-capability-registry.test.ts \
             src/office-tools/selection-text-formatting.test.ts \
+            src/office-tools/selection-write-profile.test.ts \
+            src/office-tools/selection-paragraph-formatting.test.ts \
+            src/office-tools/selection-comment.test.ts \
+            src/office-tools/selection-list-formatting.test.ts \
+            src/office-tools/selection-table-cell-text.test.ts \
             src/document-reader/integration/builtin-document-rpc.test.ts \
             src/document-reader/integration/selection-formatting-agent.test.ts \
             src/document-reader/integration/selection-formatting-command.test.ts \
+            src/document-reader/integration/selection-paragraph-formatting-agent.test.ts \
+            src/document-reader/integration/selection-paragraph-formatting-command.test.ts \
+            src/document-reader/integration/selection-comment-agent.test.ts \
+            src/document-reader/integration/selection-comment-command.test.ts \
+            src/document-reader/integration/selection-list-formatting-agent.test.ts \
+            src/document-reader/integration/selection-list-formatting-command.test.ts \
+            src/document-reader/integration/selection-table-cell-text-agent.test.ts \
+            src/document-reader/integration/selection-table-cell-text-command.test.ts \
             src/document-reader/session/document-agent.test.ts \
             src/document-reader/ui/ReaderSelectionFormattingAction.test.tsx \
+            src/document-reader/ui/ReaderParagraphFormattingAction.test.tsx \
+            src/document-reader/ui/ReaderParagraphFormattingControl.test.tsx \
+            src/document-reader/ui/ReaderSelectionCommentAction.test.tsx \
+            src/document-reader/ui/ReaderSelectionCommentControl.test.tsx \
+            src/document-reader/ui/ReaderListFormattingAction.test.tsx \
+            src/document-reader/ui/ReaderListFormattingControl.test.tsx \
+            src/document-reader/ui/ReaderTableCellTextAction.test.tsx \
+            src/document-reader/ui/ReaderTableCellTextControl.test.tsx \
+            src/document-reader/ui/ReaderSelectionActionCloseButton.test.tsx \
+            src/document-reader/ui/ReaderSelectionWriteActions.test.tsx \
+            src/document-reader/ui/useReaderSelectionActionPanel.test.ts \
+            src/document-reader/ui/useSelectionWriteAction.test.ts \
             src/document-reader/ui/host-tool-transport.test.ts
     )
 
-    step "Focused SDKJS remote-cowork QUnit"
+    step "Focused SDKJS typed-write and remote-cowork QUnit"
+    node tools/run-sdkjs-qunit.mjs word/plugins/selectionParagraphFormatting.html
+    node tools/run-sdkjs-qunit.mjs word/plugins/selectionComment.html
+    node tools/run-sdkjs-qunit.mjs word/plugins/selectionListFormatting.html
+    node tools/run-sdkjs-qunit.mjs word/plugins/selectionTableCellText.html
     node tools/run-sdkjs-qunit.mjs word/plugins/remoteCollaborativeApply.html
 else
     step "Full Agent source and unit checks"
