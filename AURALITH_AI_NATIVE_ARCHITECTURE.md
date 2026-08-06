@@ -1,7 +1,7 @@
 # Auralith AI-native Office architecture
 
 Status: normative architecture and delivery contract
-Implementation status refreshed: 2026-08-05; full automated verification and
+Implementation status refreshed: 2026-08-06; full automated verification and
 test-app installation passed, while installed-app GUI evidence remains pending
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
@@ -30,11 +30,11 @@ The required implementation order is:
    mode, selection identity, permissions, and locks.
 3. Define transaction and Undo behavior, including rollback and collaboration.
 4. Define a versioned, bounded request/response schema and structured errors.
-5. Classify every operation's side effect and approval requirements in a
-   host-owned capability registry.
+5. Classify every operation's side effect and mode-authorization requirements
+   in a host-owned capability registry.
 6. Expose only that capability through a validated editor host bridge.
 7. Register the capability with the Agent Harness and enforce task policy.
-8. Add preview, approval, progress, completion, and error UX.
+8. Add mode, normalized-change audit, progress, completion, and error UX.
 9. Add prompts and model-facing tool descriptions last.
 
 A UI control or prompt can reveal a capability; it cannot create one. A generic
@@ -80,8 +80,8 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Built-in Agent entry in editor web-app headers | native, test-build scope | test-build verified | One common launcher/panel host is injected into document, spreadsheet, presentation, PDF, and diagram editors | Public installer/release certification and native Qt start-page integration |
 | Provider/model settings and remote-evidence consent | native, test-build scope | test-build verified | Shared settings view, Advanced Settings host integration, model capability checks, local storage synchronization, and explicit remote-document consent | Central capability negotiation must consume the same registry as Office tools |
 | DOCX multimodal snapshot, retrieval, citations, and source navigation | native, DOCX read-only scope | test-build verified | Five bounded SDKJS snapshot methods, revision checks, lazy assets, evidence catalog, citations, document-change invalidation, and a registry-derived Agent bridge/manifest | General release certification; generate the web-apps host projection instead of relying only on a parity test |
-| General Agent Harness lifecycle, evidence policy, and tool policy | partial, source path connected | production source enabled for declared capabilities; release evidence pending | Typed lifecycle, canonical Office registry, production descriptors, host-owned runtime authorizer, immutable one-shot approval receipts, cancellation boundary, authoritative outcome propagation, and no-retry handling for committed/unknown dispatch | Current installed-app integration E2E and broader migration of generic chat to the same control plane |
-| `document.selection-formatting@1.1` | partial, full source path | production source enabled; installed-app E2E pending | Side-effect-free inspect plus bounded text-format apply; mixed script-aware properties, exact fonts, no-lock preload, region rebase, short scoped remote lock, immutable approval, one native LIFO Undo | Current package/hash refresh and installed-app inspect/approve/apply/fail/cancel/Undo evidence |
+| General Agent Harness lifecycle, evidence policy, and tool policy | partial, source path connected | production source enabled for declared capabilities; release evidence pending | Typed lifecycle, canonical Office registry, production descriptors, Host-owned `read/comment/auto` mode, runtime authorizer, immutable one-shot receipts, cancellation boundary, authoritative outcome propagation, and no-retry handling for committed/unknown dispatch | Current installed-app integration E2E and broader migration of generic chat to the same control plane |
+| `document.selection-formatting@1.1` | partial, full source path | production source enabled; installed-app E2E pending | Side-effect-free inspect plus bounded text-format apply; mixed script-aware properties, exact fonts, no-lock preload, region rebase, short scoped remote lock, mode-bound immutable authorization, one native LIFO Undo | Current package/hash refresh and installed-app mode/apply/fail/cancel/Undo evidence |
 | `document.selection-paragraph-formatting@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Inspect/apply for alignment, spacing and indents across at most 256 selected paragraphs, with region rebase, scoped locks, rollback proof and one native LIFO Undo | Current package/hash refresh and installed-app E2E |
 | `document.selection-list-formatting@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Inspect/set level 0..8 for existing bullet/numbered lists in a bounded plain main-document selection, with scoped locks and one native LIFO Undo | List creation/conversion/renumbering remain out of scope; current installed-app E2E pending |
 | `document.comment@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Exact-quote-bound inspect/add for a native Host-authored Auralith comment on a plain main-document selection, with durable native receipt, scoped locks and one native LIFO Undo | Resolve/reply/revision-review operations remain absent; current installed-app E2E pending |
@@ -91,15 +91,15 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Presentation document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Slide/object context, semantic read contract, selection identity, transaction and Undo rules |
 | PDF document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | PDF reading/form context, capability-specific permissions, and mutation semantics |
 | Diagram document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Page/node context, semantic graph contract, selection identity, and mutation semantics |
-| Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; Button/Checkbox contracts and tool-approval keyboard safety are now enforced | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
+| Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; Button/Checkbox contracts and Host-mode keyboard safety are now enforced | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
-| macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; GUI E2E pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260805-164918` | Installed-app GUI E2E and public release certification |
+| macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; GUI E2E pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260806-212503` | Installed-app GUI E2E and public release certification |
 | Cross-submodule verification | native, repository-gate scope | fast/full verified at exact pushed gitlinks | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Hosted CI and artifact publication |
 
 ### Production Word selection-write boundary
 
 The source production gate, dedicated receipt transport, Harness descriptors,
-runtime authorizer, Host approval/executor and Reader command paths are now
+runtime authorizer, Host mode/executor and Reader command paths are now
 connected for exactly five capabilities: text formatting, paragraph
 formatting, existing-list level, selection comment add, and strict table-cell
 plain-text replacement. The built-in manifest derives these enabled entries
@@ -110,8 +110,10 @@ allowlist. The Reader receives only a bounded preview, an opaque one-shot Host
 receipt, and a sanitized authoritative outcome. It never receives a selection
 token, exact SDKJS method, raw target identity, remote lock ids, or reusable
 authorization. The host verifies source/origin/channel/context, capability and
-profile, normalizes and freezes the payload, shows a non-modal approval card,
-and consumes the receipt exactly once.
+profile, normalizes and freezes the payload, checks its own document-level
+`read/comment/auto` mode, and consumes the receipt exactly once. `comment` and
+`auto` are standing grants and therefore do not show a per-intent confirmation
+card; the normalized view remains Host-owned and auditable.
 
 Read tools retain cooperative cancellation. For `write`, `network`, and
 `execute`, the last cancellable point is immediately before executor dispatch.
@@ -126,7 +128,7 @@ All five writes use a frozen target and exact precondition, accept only proven
 disjoint revision rebase, acquire only the final target closure through an
 asynchronous scoped lock, and execute one synchronous mutation/verification
 critical section. Text-formatting resources are resolved and preloaded before
-the lock. One approved intent creates one native LIFO history point; there is
+the lock. One mode-authorized intent creates one native LIFO history point; there is
 no Agent-only Undo stack or addressable Undo token.
 
 The strict table-cell capability is not a generic table editor. It requires the
@@ -139,7 +141,7 @@ same table conservatively expires the pending target. This is a safe P0 false
 conflict, not evidence of cell-level concurrent rebasing.
 
 Source integration is not installed-app certification. Until the current build
-has exercised inspect -> authorize -> approve -> apply/fail/cancel -> native
+has exercised inspect -> select-mode -> authorize -> apply/fail/cancel -> native
 Undo in the installed test app, the matrix remains `partial` and release
 verification pending. No code may fall back to `window.Asc.plugin`, a generic
 desktop command, or an unvalidated RPC method.
@@ -151,12 +153,13 @@ production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
 The current branch was verified with Node.js 20.19.5 at exact fetchable gitlinks
-`desktop-sdk@1e44728a11ab`, `web-apps@d30660f5b575`, and
-`sdkjs@15ee35482fcf`. All three TypeScript configurations and Biome over 488
-source files passed. Agent Vitest passed 138 files and 1,564/1,564 tests; Host
-profiles/runtime/executor/transport passed 74/74; Chromium Playwright passed
-272/272. Focused SDKJS typed-write/cowork QUnit passed paragraph 14/67,
-comment 21/150, list 13/85, table-cell 16/122, and remote cowork 24/262; the
+`desktop-sdk@28a543369362`, `web-apps@8cd9ac11b32c`, and
+`sdkjs@935170484068`. All three TypeScript configurations and Biome over 492
+source files passed. Agent Vitest passed 140 files and 1,602/1,602 tests; Host
+mode/profiles/runtime/executor/transport passed 87/87; Chromium Playwright
+passed 278/278, including 5/5 production Host mode cases. Focused SDKJS
+typed-write/cowork QUnit passed paragraph 14/67, comment 21/150, list 13/85,
+table-cell 20/160, and remote cowork 24/262; the
 full registered run also passed `pluginsApi` 36/383 and multimodal snapshot
 28/335. The isolated desktop Word Closure compile, isolated Agent Vite build,
 and both fast/full root verifiers with network fetch probes passed without
@@ -166,16 +169,16 @@ The repository now contains guarded macOS and Windows test installers. The
 macOS `--stage-only` and explicit `--install` paths completed for the fixed
 user-local Test.app using isolated Vite and SDKJS builds, payload checks,
 same-volume transactional replacement, rollback, and strict deep signing. The
-recoverable copy is `Auralith_Editer Test.app.rollback/20260805-164918`. The
+recoverable copy is `Auralith_Editer Test.app.rollback/20260806-212503`. The
 macOS console was locked when native interaction testing began, so no
-inspect/approve/apply, failure/cancel, conflict, or Undo GUI result is claimed
+inspect/mode/apply, failure/cancel, conflict, or Undo GUI result is claimed
 here until it is observed on that installed build.
 
 ## Target architecture
 
 ```mermaid
 flowchart LR
-    UI["Agent UI and approval UX"]
+    UI["Agent UI and mode/action UX"]
     Runtime["General Agent Harness"]
     Registry["Office Capability Registry"]
     Host["Validated editor host bridge"]
@@ -203,7 +206,7 @@ SDKJS owns the meaning of document operations. It MUST:
 - expose explicit units and normalized values;
 - distinguish uniform, mixed, unsupported, unavailable, and stale states;
 - validate read-only mode, protected content, locks, and collaboration;
-- create one coherent editor history point for one approved user intent;
+- create one coherent editor history point for one mode-authorized user intent;
 - roll back partial writes and return structured errors;
 - preserve normal editor Undo/Redo behavior.
 
@@ -237,7 +240,7 @@ Each capability operation MUST declare:
 - context and selection requirements;
 - structured error codes and retry policy;
 - transaction atomicity, rollback, Undo, and idempotency behavior;
-- approval and data-consent policy;
+- Host mode-authorization and data-consent policy;
 - runtime limits such as item count, byte count, and timeout;
 - availability and lifecycle events;
 - maturity and required release gates.
@@ -264,6 +267,7 @@ Every Agent task MUST bind to an immutable context envelope containing:
 - exact revision identity, including unsaved edits;
 - active selection identity and selection kind when required;
 - host-granted capabilities and their versions;
+- Host-owned document Agent mode: `read`, `comment`, or `auto`;
 - relevant permission and collaboration state.
 
 Prompts, visible labels, open tabs, or previously cached chat state are not
@@ -286,7 +290,7 @@ not yet issue semantic selection or collaboration-lock state. The remaining
 events are target architecture and MUST be added before a capability depends
 on them.
 
-Context changes MUST invalidate incompatible pending approvals, evidence,
+Context and Agent-mode changes MUST invalidate incompatible pending receipts, evidence,
 selection tokens, and queued writes. Cached evidence may remain visible as
 history, but MUST be marked stale and MUST NOT authorize a new claim or write.
 
@@ -300,12 +304,14 @@ The host bridge is a security boundary. It MUST:
 - expose only context-supported operations;
 - keep read and write methods distinguishable;
 - refuse generic execution methods;
-- fail closed when the SDK method, lock executor, approval service, or context
+- fail closed when the SDK method, lock executor, mode authorizer, or context
   is unavailable;
 - return a structured, bounded response for every accepted request.
 
-The host owns approval UX and execution authority. An iframe, model, provider,
-or Agent handler cannot approve its own operation.
+The host owns the mode control, authorization state, normalized operation view,
+and execution authority. An iframe, model, provider, or Agent handler cannot
+set or broaden the mode or authorize its own operation. The Host MUST default
+unknown or missing mode state to `read`.
 
 #### General Agent Harness
 
@@ -315,8 +321,8 @@ It MUST:
 - resolve side effects from the host registry;
 - reject unregistered operations;
 - deny writes and execution in view or read-only contexts;
-- require the declared approval before dispatch;
-- freeze the approved request before authorization and execution;
+- require the declared Host mode authorization before dispatch;
+- freeze the normalized request before authorization and execution;
 - avoid placing secrets or raw document content in lifecycle telemetry;
 - preserve the exact document revision and evidence catalog for a task;
 - distinguish blocked, denied, cancelled, failed, and completed outcomes.
@@ -331,9 +337,10 @@ driven by registry availability and current context.
 
 The UI MUST:
 
-- show unavailable, unsupported, approval-required, running, completed,
+- show unavailable, unsupported, mode-blocked, running, completed,
   stale, and failed states explicitly;
-- preview the target and requested changes before a write approval;
+- present the active Host-owned mode and retain an auditable normalized change
+  record even when `comment/auto` skip a per-operation confirmation card;
 - preserve keyboard focus and expose translated accessible names;
 - remain usable at supported sidebar widths, zoom levels, themes, and RTL;
 - never report success before the authoritative SDKJS result;
@@ -384,8 +391,8 @@ Exit criterion: unsupported editors and stale contexts fail closed.
 Required outputs:
 
 - registered descriptor and host-owned executor;
-- task allowlist and immutable approval payload;
-- approval, denial, cancellation, and authoritative completion tests;
+- task allowlist and immutable authorization payload;
+- mode authorization, denial, cancellation, and authoritative completion tests;
 - bounded audit events without secrets or document payloads.
 
 Exit criterion: the model cannot invoke or reclassify an operation outside
@@ -395,7 +402,7 @@ policy.
 
 Required outputs:
 
-- context-aware preview and approval;
+- context-aware mode control and normalized operation audit;
 - progress, error recovery, stale-state, and Undo guidance;
 - component API, theme, narrow-width, keyboard, RTL, reduced-motion, and
   forced-colors tests.
@@ -416,7 +423,7 @@ Required outputs:
 Exit criterion: every release gate passes. Only then may maturity become
 `native` for the declared scope.
 
-## Context, approval, transaction, and Undo rules
+## Context, mode authorization, transaction, and Undo rules
 
 ### Reads
 
@@ -432,12 +439,16 @@ Exit criterion: every release gate passes. Only then may maturity become
 - A write MUST be based on a fresh inspect/preflight result.
 - Selection writes MUST use an opaque, bounded token tied to exact document
   positions and revision identity.
+- A model-planned selection write MUST capture its opaque target lease at user
+  submit time. It MUST NOT bind whatever live selection exists after model
+  generation finishes. Only a complete-message, single-match deterministic
+  command may dispatch immediately without a model-planning lease.
 - Tokens for writes SHOULD be single-use.
-- Approval MUST occur after normalization and before dispatch.
-- The approval payload MUST state operation, target, scope, normalized change,
-  important exclusions, and expected Undo behavior.
-- The approved payload MUST be immutable.
-- A write MUST create one user-visible history point for one approved intent.
+- Host mode authorization MUST occur after normalization and before dispatch.
+- The Host-owned normalized view MUST state operation, target, scope,
+  normalized change, important exclusions, and expected Undo behavior.
+- The authorized payload MUST be immutable and bound to a one-shot receipt.
+- A write MUST create one user-visible history point for one authorized intent.
 - Partial application MUST roll back.
 - Collaboration locks MUST be acquired through the editor's supported
   asynchronous mechanism. If that mechanism is unavailable, the write fails
@@ -445,7 +456,7 @@ Exit criterion: every release gate passes. Only then may maturity become
 - A write MUST preserve the editor's normal Undo/Redo behavior; a hidden
   Agent-only undo stack is forbidden.
 - Native History is strict LIFO and has no addressable rollback token. The
-  approval UI MUST describe the result as one ordinary Undo step, not promise
+  mode/action UI MUST describe the result as one ordinary Undo step, not promise
   that the Agent can later remove its own point after newer human edits.
 - Rollback is available only while the intent's outer action is still open.
   Verification that can reject a mutation MUST therefore run before
@@ -470,8 +481,8 @@ Exit criterion: every release gate passes. Only then may maturity become
 ### Write scheduling decision: strict intent transactions
 
 The write core uses a refined sequential intent transaction (Candidate A).
-One approved user intent may contain multiple normalized operations, but the
-whole intent has one immutable approval payload, one compound lock phase, one
+One mode-authorized user intent may contain multiple normalized operations,
+but the whole intent has one immutable authorization payload, one compound lock phase, one
 outer action, one verification result, and one native history point. V1 is
 all-or-nothing; it does not silently drop failed operations.
 
@@ -489,8 +500,8 @@ tests prove the one-intent/one-point invariant.
 
 Candidate B's delayed presentation queue is deferred. Formatting a precise
 range is not safely addressable by paragraph identity alone, and coalescing by
-a 50–250 ms timer would merge separate approvals and Undo boundaries. The
-system MAY batch properties already contained in the same approved patch, as
+a 50–250 ms timer would merge separate intents and Undo boundaries. The
+system MAY batch properties already contained in the same authorized patch, as
 the selection-formatting contract does today; it MUST NOT coalesce independent
 intents merely because they arrived close together.
 
@@ -504,7 +515,7 @@ yet evidence that real formatting writes avoid a snapshot refresh.
 ### Non-blocking cowork concurrency model
 
 This model is implemented for the five declared Word selection writes. Reads,
-planning, approval and formatting-resource preload run without a document
+planning, mode authorization and formatting-resource preload run without a document
 interaction lock. Collaborative apply uses the SDKJS asynchronous scoped-lock
 path, revalidates the frozen target after grant, and holds only a short
 synchronous mutation/verification critical section. The separate incoming
@@ -513,14 +524,19 @@ ownership and resource protections; it is not the outbound Agent transaction.
 
 Real-time cowork uses snapshot isolation plus region-aware optimistic
 concurrency. It MUST NOT freeze the document while the model is thinking,
-while the host is showing an approval, or while a remote lock request is in
+while the Host is validating authorization, or while a remote lock request is in
 flight. The only synchronous critical section is the final SDKJS mutation and
 pre-finalize verification; it contains no network call and no `await`.
 
-An approved intent carries two different kinds of version information:
+An authorized intent carries two different kinds of version information:
 
-- `contextEpoch` identifies the editor instance, document identity, permission
-  mode, and capability generation. Ordinary document edits do not advance it.
+- `contextEpoch` identifies the editor instance, document identity, editor
+  permission, and capability generation. Ordinary document edits and Agent
+  mode preference changes do not advance it.
+- `agentMode` is the independent Host write-policy generation. A receipt
+  captures its expected mode; a mode switch revokes pending writes and fails
+  old receipts without invalidating an immutable read snapshot or streamed
+  answer.
 - `basisContentRevision` identifies the content snapshot used for planning.
   It may advance without invalidating an intent when every intervening delta
   is contiguous, bounded, understood, and disjoint from the intent's watched
@@ -528,7 +544,7 @@ An approved intent carries two different kinds of version information:
 
 Each write token owns an immutable target closure: the exact selection/range,
 the stable paragraph/table/drawing identities that contain it, an exact text
-or structural precondition, and the property values used by the approval
+or structural precondition, and the property values used by the authorization
 preview. A change journal reconciliation returns exactly one of:
 
 - `ready`: no document revision drift;
@@ -538,17 +554,18 @@ preview. A change journal reconciliation returns exactly one of:
   unknown/overflow/full-rescan, the target is ambiguous, or its precondition
   changed.
 
-`rebased` may proceed without asking the user to approve the same change
-again. `conflict` never retries or silently retargets; it returns a new preview
+`rebased` may proceed without asking the user to select the same mode again.
+`conflict` never retries or silently retargets; it returns a new target-inspection
 requirement. Fuzzy quote matching is useful for explaining a conflict, but it
 does not authorize a write.
 
 The runtime sequence is:
 
 1. Capture a read-only target token and simulation at revision `r0`.
-2. Let the host render a non-modal, host-owned approval card. The document
-   canvas remains editable.
-3. On approval, reconcile `r0..r1`. Disjoint changes rebase the token to `r1`.
+2. Let the Host normalize the immutable view and verify its current document
+   mode. In `comment/auto`, no per-intent confirmation card is required and the
+   document canvas remains editable.
+3. On authorization, reconcile `r0..r1`. Disjoint changes rebase the token to `r1`.
 4. Request only the target lock closure. A collaborative implementation may
    not use the standard global interaction lock while waiting.
 5. After the lock callback, reconcile `r1..r2` again. This closes the race
@@ -569,22 +586,22 @@ cancellation still aborts immediately.
 
 V1 serializes Agent commits per `documentId`, but it does not serialize or
 block human editing. Queue backpressure is bounded: one committing intent and
-one pending approved intent per document. Planning and reading may continue,
-but a second write cannot bypass the first intent's approval or result.
+one pending authorized intent per document. Planning and reading may continue,
+but a second write cannot bypass the first intent's authorization or result.
 
-### Approval policy
+### Agent mode and authorization policy
 
 Default policy:
 
 | Effect | Default |
 | --- | --- |
 | `read` | Allow only if registered, context-valid, and within local/remote data-consent bounds |
-| `write` | Explicit user approval required for the normalized immutable request |
+| `write` | `auto` only, except `document.comment` which is also allowed by `comment`; each request still requires Host-issued one-shot authorization |
 | `network` | Explicit provider/data consent and destination policy required |
-| `execute` | Denied unless a narrowly scoped operation has explicit approval |
+| `execute` | Denied unless a narrowly scoped operation is permitted by the current Host mode and registry |
 
-The model cannot approve a tool, change its effect, broaden its target, or
-convert a denial into a retry. Approval expires when document identity,
+The model cannot set the Agent mode, authorize a tool, change its effect,
+broaden its target, or convert a denial into a retry. Authorization expires when document identity,
 context epoch, permission mode, capability version, normalized input, or the
 watched target precondition changes. Moving the live caret or making a proven
 disjoint edit does not expire an immutable captured target.
@@ -593,7 +610,7 @@ disjoint edit does not expire an immutable captured target.
 
 Every write-capability test MUST prove:
 
-1. one approved operation creates exactly one history point;
+1. one authorized operation creates exactly one history point;
 2. one Undo restores the inspected pre-write state;
 3. a rejected or interrupted operation leaves no partial state;
 4. stale and replayed targets are rejected;
@@ -601,7 +618,7 @@ Every write-capability test MUST prove:
 6. audit metadata records capability, operation, effect, document/revision
    references, decision, and outcome without recording secrets or unnecessary
    document content;
-7. disjoint user edits during planning, approval, and lock wait are preserved
+7. disjoint user edits during planning, authorization, and lock wait are preserved
    and the Agent target is safely rebased;
 8. an intersecting edit, revision gap, unknown delta, overflow, or ambiguous
    target fails before mutation;
@@ -613,7 +630,7 @@ Every write-capability test MUST prove:
 ## Component governance contract
 
 Component governance applies to the standalone Agent, Reader, embedded model
-settings, approval UI, and editor-owned host.
+settings, mode/action UI, and editor-owned host.
 
 ### Ownership boundaries
 
@@ -621,7 +638,7 @@ settings, approval UI, and editor-owned host.
   providers, or network APIs directly.
 - Controllers own state machines and async orchestration.
 - Adapters own SDKJS, host, storage, provider, and platform integration.
-- The editor host may size, launch, theme, localize, approve, and transport the
+- The editor host may size, launch, theme, localize, authorize, and transport the
   iframe, but MUST NOT duplicate Reader feature UI.
 - Capability availability enters UI through typed props or a dedicated
   capability context, never by probing globals inside a component.
@@ -695,7 +712,7 @@ Exit criteria:
 ### Phase 1: finish Word selection formatting
 
 Source implementation status: complete. The production registry, dedicated
-transport, runtime authorizer, one-shot receipt, Host approval/executor,
+transport, runtime authorizer, one-shot receipt, Host mode/executor,
 scoped-lock apply and built-in manifest are connected. The remaining exit gate
 is current installed-app runtime evidence.
 
@@ -705,9 +722,9 @@ Deliver:
 - expose inspect and apply through a dedicated production tool transport and
   separate validated bridge operations;
 - wire the real runtime authorizer so capability availability and one-shot
-  approval are enforced on the production path;
+  mode authorization is enforced on the production path;
 - implement context availability and selection-change invalidation;
-- implement immutable host-owned change preview and write approval;
+- implement immutable host-owned normalized change view and mode authorization;
 - connect the typed formatting client to a host-owned executor;
 - connect the tested Harness cancellation boundary to the production host
   receipt and verify end-to-end that an accepted but not yet acknowledged
@@ -715,7 +732,7 @@ Deliver:
 - replace the broad asynchronous collaboration lock with a non-blocking scoped
   remote lock and a short, revision-revalidated mutation critical section;
 - declare the capability in the built-in manifest;
-- run an installed-app E2E covering inspect, approve, apply, failure, stale
+- run an installed-app E2E covering inspect, all three modes, apply, failure, stale
   token, read-only, lock, cancellation, and Undo.
 
 Exit criteria:
@@ -754,7 +771,7 @@ Next semantic increments are paragraph styles/outline operations, list
 creation/conversion/renumbering, durable cell-level change identity followed by
 table structure operations, comment resolve/reply, and revision-aware review.
 Each increment starts again at SDKJS semantics. It cannot reuse another
-capability's approval, selection token or receipt.
+capability's authorization, selection token or receipt.
 
 ### Phase 4: replace non-Word shells with native capabilities
 
@@ -795,9 +812,9 @@ No manual demo, screenshot, or model response can waive these gates.
 | Gate | Required evidence | Blocking examples |
 | --- | --- | --- |
 | R0 Source and toolchain | Node.js 20; expected gitlinks; cleanly identifiable dirty state; Yecyi origins and ONLYOFFICE upstreams; fork reachability | Missing submodule, stale hard-coded pin, unfetchable gitlink, wrong remote |
-| R1 Capability contract | Canonical registry validates; all generated inventories match; methods, schemas, effects, errors, context, approval, and Undo are declared | Hand-written list drift, manifest omission, unclassified operation |
+| R1 Capability contract | Canonical registry validates; all generated inventories match; methods, schemas, effects, errors, context, mode authorization, and Undo are declared | Hand-written list drift, manifest omission, unclassified operation |
 | R2 SDKJS semantics | Targeted SDKJS QUnit plus build; stale/read-only/lock/rollback/Undo invariants | Prompt-only implementation, ambiguous units, partial write, missing Undo |
-| R3 Harness and security | Registration, allowlist, immutable approval, origin/source/channel, bounds, consent, cancellation, and denial tests | Generic execution, self-approved tool, side-effect downgrade, bridge bypass |
+| R3 Harness and security | Registration, allowlist, immutable authorization, Host-owned mode, origin/source/channel, bounds, consent, cancellation, and denial tests | Generic execution, model-selected mode, self-authorized tool, side-effect downgrade, bridge bypass |
 | R4 Components and accessibility | TSX contracts and thresholds; themes; widths; zoom; keyboard; RTL; reduced motion; forced colors; no unexpected runtime errors | Hard-coded theme fork, inaccessible control, overflow, hidden failure |
 | R5 Cross-layer integration | Real host file with Agent client and SDKJS method; capability availability and invalidation; unsupported editors fail closed | Synthetic-only success, stale context accepted, production descriptor missing |
 | R6 Built bundle | `npx vite build`; built-in packaging; production-bundle E2E; complete dependency/hash manifest | Dev-server-only tests, missing dynamic chunk, stale deploy file |
@@ -852,7 +869,7 @@ A capability is done only when all of the following are true:
 - the canonical registry generates or verifies every layer;
 - the host bridge exposes only the declared operation;
 - the production Agent Harness registers and authorizes it;
-- UI availability, preview, approval, progress, failure, stale state, and Undo
+- UI availability, mode, normalized action audit, progress, failure, stale state, and Undo
   guidance are implemented;
 - cross-layer, bundle, and installed-app tests pass;
 - the capability matrix and release evidence are updated.

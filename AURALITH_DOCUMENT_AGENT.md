@@ -105,9 +105,11 @@ deliberately different:
 - Provider transport and Harness state are request-scoped;
 - streaming deltas are ephemeral;
 - verified result checkpoints and bounded audit metadata are durable;
-- production document edits remain denied while the dedicated Agent tool
-  transport, Harness registration, and non-blocking remote scoped-lock path are
-  incomplete; the SDKJS/Host selection-formatting pipeline stays gated.
+- production Word edits are governed by a Host-owned per-document mode:
+  `read` denies writes, `comment` permits only native comments, and `auto`
+  permits the bounded production registry. Every permitted write still uses a
+  request-scoped runtime, immutable Host authorization, one-shot receipt,
+  non-blocking scoped lock, authoritative result, and native LIFO Undo.
 
 Useful OpenCode runtime ideas for later phases are durable input admission,
 coalesced per-session execution, typed context epochs, and separate live versus
@@ -121,19 +123,23 @@ replace native History, tracked revisions, locks, or Undo.
    rename, Save As lineage, and multi-window fencing.
 2. Persist a bounded Harness event audit with prompt selection/version,
    evidence IDs, lifecycle state, and redacted errors.
-3. Upgrade the reader result contract from citation IDs to claim ranges and
-   exact evidence quotes, then run the existing quote validator in production.
+3. Complete claim-range coverage for every material statement; exact evidence
+   quote validation is already active in production.
 4. Bind remote-consent receipts to provider endpoint, document, task, modality,
    and expiry; migrate API keys from localStorage to the OS credential store.
 5. Add durable document progress high-water marks and startup reconciliation;
    editor change events remain acceleration hints rather than correctness
    authority.
-6. Promote the gated selection-formatting operation through the dedicated
-   production Agent tool transport and Harness. Preserve its refined
-   strict-intent protocol: plan → resolve → normalize → validate → simulate →
-   approve → target-lock → apply → verify before finalize → refresh. One
-   approved user intent, including one bounded formatting patch, maps to one
-   native LIFO history point. Do not add cross-intent timed coalescing.
+6. Extend the same mode-authorized strict-intent protocol to the next Word
+   semantics: body-text replacement with a frozen target, paragraph
+   styles/outline, list creation/conversion, durable cell identity and table
+   structure, comment reply/resolve, and revision-aware review. One authorized
+   intent maps to one native LIFO history point; do not add cross-intent timed
+   coalescing.
+7. Add a submit-time opaque selection lease before enabling model-generated
+   rewrites from chat. The current deterministic chat router intentionally
+   handles only complete-message, single-match commands; a delayed model result
+   must never attach itself to whatever selection happens to be live later.
 
 ## Provenance
 

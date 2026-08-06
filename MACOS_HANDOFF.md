@@ -42,7 +42,8 @@ Unmodified submodules remain on their official repositories.
   strict single-simple-cell plain-text replacement.
 - `web-apps` contains the built-in editor host, header entry, advanced
   settings integration, restricted snapshot bridge, closed write profiles,
-  Host-owned approval/executor and dedicated opaque-receipt write transport.
+  Host-owned document mode/executor and dedicated opaque-receipt write
+  transport.
 - `desktop-sdk/ChromiumBasedEditors/plugins/ai-agent` contains the Auralith
   Agent UI, general and DOCX harnesses, provider/model configuration, reader
   pipeline, retrieval, citations, storage, typed Office clients, production
@@ -69,10 +70,13 @@ Unmodified submodules remain on their official repositories.
   `document.selection-formatting@1.1`,
   `document.selection-paragraph-formatting@1.0`,
   `document.selection-list-formatting@1.0`, `document.comment@1.0`, and
-  `document.selection-table-cell-text@1.0`. Each write uses immutable Host
-  approval, a one-shot receipt, no automatic retry after committed/unknown
-  dispatch, a short target-scoped collaborative lock, and one native LIFO Undo
-  point.
+  `document.selection-table-cell-text@1.0`. The Host owns one per-document
+  `read/comment/auto` mode: `read` denies writes, `comment` permits only native
+  comments, and `auto` permits all registered bounded writes. `comment/auto`
+  skip repetitive per-operation confirmation, while every write still uses an
+  immutable Host authorization, a one-shot receipt, no automatic retry after
+  committed/unknown dispatch, a short target-scoped collaborative lock, and
+  one native LIFO Undo point.
 - Table-cell P0 replaces the complete plain text of exactly one simple,
   unmerged, top-level cell. It is not a rich-text or structural table editor.
   The current table-level change feed conservatively treats an edit to another
@@ -133,18 +137,19 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
-The current 2026-08-05 checkpoint was run with Node.js 20.19.5 against the
-fetchable gitlinks `desktop-sdk@1e44728a11ab`, `web-apps@d30660f5b575`, and
-`sdkjs@15ee35482fcf`:
+The current 2026-08-06 checkpoint was run with Node.js 20.19.5 against the
+fetchable gitlinks `desktop-sdk@28a543369362`, `web-apps@8cd9ac11b32c`, and
+`sdkjs@935170484068`:
 
-- all three TypeScript configurations and Biome over 488 source files passed;
-- Agent Vitest passed 138 files and 1,564/1,564 tests;
-- Host write profiles/runtime/executor/transport passed 74/74 Node tests;
-- Chromium Playwright passed 272/272, including deterministic locale, 280 px
+- all three TypeScript configurations and Biome over 492 source files passed;
+- Agent Vitest passed 140 files and 1,602/1,602 tests;
+- Host mode/write profiles/runtime/executor/transport passed 87/87 Node tests;
+- Chromium Playwright passed 278/278, including production Read, Comment, and
+  Auto mode authorization without per-operation approval cards, deterministic locale, 280 px
   RTL containment, provider synchronization, Host, Reader, settings, and
   visual gates;
 - focused typed-write QUnit passed paragraph 14/67, comment 21/150, list
-  13/85, table-cell 16/122, and remote cowork 24/262; the full registered run
+  13/85, table-cell 20/160, and remote cowork 24/262; the full registered run
   also passed `pluginsApi` 36/383 and multimodal snapshot 28/335;
 - the isolated desktop Word Closure compile and isolated Agent Vite build
   passed; the verifier wrote no tracked or packaged deploy assets.
@@ -155,10 +160,10 @@ The installed bundle at
 production-entry, bundle-shape, deep ad-hoc signature, and designated-
 requirement checks. The recoverable pre-swap copy is:
 
-`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260805-164918`
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260806-212503`
 
 The macOS console was locked when native interaction testing began, so the
-installed app's inspect -> authorize -> approve -> apply/fail/cancel -> Undo
+installed app's inspect -> select-mode -> authorize -> apply/fail/cancel -> Undo
 GUI run remains unobserved. Static/build/install evidence MUST NOT be presented
 as that final runtime evidence.
 
@@ -197,7 +202,7 @@ manifest, signing logs, and the one-line production-index diff. The final
 
 That historical app was deliberately not launched because the macOS console
 remained locked. Its static hash, production entry, bundle metadata and
-signature checks do not certify the current source. The 2026-08-05 checkpoint
+signature checks do not certify the current source. The 2026-08-06 checkpoint
 above supersedes its stage/install status; only the observed installed-app GUI
 E2E remains pending before release readiness can be claimed.
 

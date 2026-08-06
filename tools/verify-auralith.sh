@@ -236,6 +236,8 @@ if [[ "$mode" == "fast" ]]; then
             src/office-tools/selection-list-formatting.test.ts \
             src/office-tools/selection-table-cell-text.test.ts \
             src/document-reader/integration/builtin-document-rpc.test.ts \
+            src/document-reader/integration/document-agent-mode.test.ts \
+            src/document-reader/integration/immediate-selection-write-intent.test.ts \
             src/document-reader/integration/selection-formatting-agent.test.ts \
             src/document-reader/integration/selection-formatting-command.test.ts \
             src/document-reader/integration/selection-paragraph-formatting-agent.test.ts \
@@ -258,8 +260,10 @@ if [[ "$mode" == "fast" ]]; then
             src/document-reader/ui/ReaderTableCellTextControl.test.tsx \
             src/document-reader/ui/ReaderSelectionActionCloseButton.test.tsx \
             src/document-reader/ui/ReaderSelectionWriteActions.test.tsx \
+            src/document-reader/ui/ReaderSidebar.test.tsx \
             src/document-reader/ui/useReaderSelectionActionPanel.test.ts \
             src/document-reader/ui/useSelectionWriteAction.test.ts \
+            src/document-reader/ui/host-bridge.test.ts \
             src/document-reader/ui/host-tool-transport.test.ts
     )
 
