@@ -162,6 +162,8 @@ Host receipt 写链路；它不要求配置模型，也不弹出逐操作确认�
 - 带有明确批注正文的选区批注；
 - 带有明确新文本的当前简单单元格完整替换。
 
+带正文 payload 的批注与单元格命令统一接受 ASCII `:` 和桌面输入法可能保留的全角 `：`；两种分隔符进入相同的长度、控制字符、模式和单一意图校验，不会扩大可写范围。
+
 `read` 不会路由任何写入，`comment` 只路由批注，`auto` 才路由全部五类。
 问句、多操作句、改写/生成请求、越界参数、多行输入或不唯一匹配一律不触发
 写入，而是留在普通问答路径。这个保守边界是为了在用户持续编辑时不写错目标。
@@ -193,7 +195,7 @@ fail-closed。
 
 SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资源/世代/owner 保护；那条 incoming replay 路径与 Agent 发出的 scoped-lock 写入不是同一个事务。
 
-上述 production 源码路径已接通；三模式变更完成自动化与重新安装后，仍必须在真实窗口执行 `inspect → select-mode → authorize → apply/fail/cancel → Undo` GUI E2E。在完成该证据前，应把能力描述为“production path connected, automated and installed-build verification passed, installed GUI verification pending”，而不是已完成安装版认证。
+上述 production 源码路径已接通。安装版真实窗口已经观察到三模式切换、Auto 模式的确定性加粗写入，以及普通原生 Undo 恢复写入前状态；这只证明该正向链路，不代表全部能力已完成安装版认证。Comment 写入、失败/取消、冲突以及其余写能力仍须在当前安装构建中逐项执行 `inspect → select-mode → authorize → apply/fail/cancel → Undo` GUI E2E。
 
 ## 新增文件格式的实施契约
 
@@ -206,9 +208,9 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 
 ## 测试边界
 
-2026-08-06 当前结果：Node.js 20.19.5；三套 TypeScript 通过；Biome 492 个源码文件通过；Agent Vitest 140 个文件、1,602/1,602；Host mode/write profiles/runtime/executor/transport 87/87；Chromium Playwright 278/278，其中生产 Host 三模式用例 5/5。SDKJS typed-write/cowork QUnit 通过 paragraph 14/67、comment 21/150、list 13/85、table-cell 20/160、remote cowork 24/262，完整注册运行另通过 `pluginsApi` 36/383 与 multimodal snapshot 28/335。隔离 desktop Word Closure、隔离 Vite、fast/full `--network` 根验证器全部通过；精确 gitlink 为 `desktop-sdk@28a543369362`、`web-apps@8cd9ac11b32c`、`sdkjs@935170484068`。
+2026-08-06 当前结果：Node.js 20.19.5；三套 TypeScript 通过；Biome 492 个源码文件通过；Agent Vitest 140 个文件、1,604/1,604；Host mode/write profiles/runtime/executor/transport 87/87；Chromium Playwright 278/278，其中生产 Host 三模式用例 5/5。SDKJS typed-write/cowork QUnit 通过 paragraph 14/67、comment 21/150、list 13/85、table-cell 20/160、remote cowork 24/262，完整注册运行另通过 `pluginsApi` 36/383 与 multimodal snapshot 28/335。隔离 desktop Word Closure、隔离 Vite、fast/full `--network` 根验证器全部通过；精确 gitlink 为 `desktop-sdk@e3c4ca8a01b9`、`web-apps@8cd9ac11b32c`、`sdkjs@935170484068`。
 
-当前 Test.app 的安装回滚点是 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260806-212503`。安装后的 payload、production entry、bundle shape、深层 ad-hoc 签名和 designated requirement 已验证；真实 GUI 交互仍因 macOS 控制台锁定而待执行。
+当前 Test.app 的安装回滚点是 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260806-214730`。安装后的 payload、production entry、bundle shape、深层 ad-hoc 签名和 designated requirement 已验证。前一安装构建已在真实 GUI 中证明三模式切换、Auto 确定性加粗与普通原生 Undo；当前构建另包含英文命令对输入法全角 `：` 的确定性解析修复。Comment 正向链路及剩余失败/取消/冲突矩阵仍须在解锁后的当前安装构建中复测。
 
 源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、五个 Reader 操作链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
 

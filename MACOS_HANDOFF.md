@@ -26,10 +26,10 @@ of downloading the upstream `master` tree first.
 
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
-| root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `master` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `auralith/master` | `25934801e6693529d4a05366cda5e5f01b68cfc0` |
-| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `auralith/master` | `8c6ba0daf5f1d1916ceee209379ad013be7054e4` |
-| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `auralith/master` | `8c99623eccb957118952dbd49abc20b06726443f` |
+| root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `e3c4ca8a01b964e33e29ad77b52549bd54094585` |
+| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `8cd9ac11b32cce2ba212a69283ec8781592051bf` |
+| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `9351704840681841557dee80e2b93d9c2208db8a` |
 
 Unmodified submodules remain on their official repositories.
 
@@ -138,11 +138,11 @@ removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
 The current 2026-08-06 checkpoint was run with Node.js 20.19.5 against the
-fetchable gitlinks `desktop-sdk@28a543369362`, `web-apps@8cd9ac11b32c`, and
+fetchable gitlinks `desktop-sdk@e3c4ca8a01b9`, `web-apps@8cd9ac11b32c`, and
 `sdkjs@935170484068`:
 
 - all three TypeScript configurations and Biome over 492 source files passed;
-- Agent Vitest passed 140 files and 1,602/1,602 tests;
+- Agent Vitest passed 140 files and 1,604/1,604 tests;
 - Host mode/write profiles/runtime/executor/transport passed 87/87 Node tests;
 - Chromium Playwright passed 278/278, including production Read, Comment, and
   Auto mode authorization without per-operation approval cards, deterministic locale, 280 px
@@ -160,12 +160,17 @@ The installed bundle at
 production-entry, bundle-shape, deep ad-hoc signature, and designated-
 requirement checks. The recoverable pre-swap copy is:
 
-`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260806-212503`
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260806-214730`
 
-The macOS console was locked when native interaction testing began, so the
-installed app's inspect -> select-mode -> authorize -> apply/fail/cancel -> Undo
-GUI run remains unobserved. Static/build/install evidence MUST NOT be presented
-as that final runtime evidence.
+Native interaction on the preceding install observed Read/Comment/Auto mode
+switching, an immediate Auto-mode bold write against a real DOCX selection,
+and one ordinary native Undo restoring the pre-write appearance. The same run
+also exposed that an English comment command containing the IME fullwidth
+colon `：` fell through to model chat; `desktop-sdk@e3c4ca8a01b9` fixes that
+deterministic parser gap and the current app was reinstalled from it. The
+console locked before the repaired Comment path could be re-observed, so this
+positive formatting evidence MUST NOT be generalized to the remaining
+comment, failure/cancel, conflict, paragraph, list, or table GUI matrix.
 
 The following 2026-08-04 cowork-safety and macOS installation checkpoint is a
 historical baseline. It predates the five production selection-write paths and

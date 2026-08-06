@@ -2,7 +2,8 @@
 
 Status: normative architecture and delivery contract
 Implementation status refreshed: 2026-08-06; full automated verification and
-test-app installation passed, while installed-app GUI evidence remains pending
+test-app installation passed; installed Auto formatting plus native Undo has
+positive GUI evidence, while the remaining installed-app matrix is pending
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
 Office capabilities. It covers SDKJS document semantics, editor context,
@@ -80,11 +81,11 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Built-in Agent entry in editor web-app headers | native, test-build scope | test-build verified | One common launcher/panel host is injected into document, spreadsheet, presentation, PDF, and diagram editors | Public installer/release certification and native Qt start-page integration |
 | Provider/model settings and remote-evidence consent | native, test-build scope | test-build verified | Shared settings view, Advanced Settings host integration, model capability checks, local storage synchronization, and explicit remote-document consent | Central capability negotiation must consume the same registry as Office tools |
 | DOCX multimodal snapshot, retrieval, citations, and source navigation | native, DOCX read-only scope | test-build verified | Five bounded SDKJS snapshot methods, revision checks, lazy assets, evidence catalog, citations, document-change invalidation, and a registry-derived Agent bridge/manifest | General release certification; generate the web-apps host projection instead of relying only on a parity test |
-| General Agent Harness lifecycle, evidence policy, and tool policy | partial, source path connected | production source enabled for declared capabilities; release evidence pending | Typed lifecycle, canonical Office registry, production descriptors, Host-owned `read/comment/auto` mode, runtime authorizer, immutable one-shot receipts, cancellation boundary, authoritative outcome propagation, and no-retry handling for committed/unknown dispatch | Current installed-app integration E2E and broader migration of generic chat to the same control plane |
-| `document.selection-formatting@1.1` | partial, full source path | production source enabled; installed-app E2E pending | Side-effect-free inspect plus bounded text-format apply; mixed script-aware properties, exact fonts, no-lock preload, region rebase, short scoped remote lock, mode-bound immutable authorization, one native LIFO Undo | Current package/hash refresh and installed-app mode/apply/fail/cancel/Undo evidence |
+| General Agent Harness lifecycle, evidence policy, and tool policy | partial, source path connected | production source enabled for declared capabilities; partial installed GUI evidence | Typed lifecycle, canonical Office registry, production descriptors, Host-owned `read/comment/auto` mode, runtime authorizer, immutable one-shot receipts, cancellation boundary, authoritative outcome propagation, and no-retry handling for committed/unknown dispatch | Complete the installed-app fail/cancel/conflict matrix and broader migration of generic chat to the same control plane |
+| `document.selection-formatting@1.1` | partial, full source path | Auto bold plus one native Undo observed in the installed app; full E2E pending | Side-effect-free inspect plus bounded text-format apply; mixed script-aware properties, exact fonts, no-lock preload, region rebase, short scoped remote lock, mode-bound immutable authorization, one native LIFO Undo | Current-build failure/cancel/stale/read-only/lock evidence and the remaining formatting matrix |
 | `document.selection-paragraph-formatting@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Inspect/apply for alignment, spacing and indents across at most 256 selected paragraphs, with region rebase, scoped locks, rollback proof and one native LIFO Undo | Current package/hash refresh and installed-app E2E |
 | `document.selection-list-formatting@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Inspect/set level 0..8 for existing bullet/numbered lists in a bounded plain main-document selection, with scoped locks and one native LIFO Undo | List creation/conversion/renumbering remain out of scope; current installed-app E2E pending |
-| `document.comment@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Exact-quote-bound inspect/add for a native Host-authored Auralith comment on a plain main-document selection, with durable native receipt, scoped locks and one native LIFO Undo | Resolve/reply/revision-review operations remain absent; current installed-app E2E pending |
+| `document.comment@1.0` | partial, full source path | production source enabled; IME separator parser repaired and installed; GUI retest pending | Exact-quote-bound inspect/add for a native Host-authored Auralith comment on a plain main-document selection, with durable native receipt, scoped locks and one native LIFO Undo | Re-observe add/Undo on the current build; resolve/reply/revision-review operations remain absent |
 | `document.selection-table-cell-text@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Full plain-text replacement of exactly one simple unmerged cell, bounded to one paragraph/ordinary run and 4096 UTF-16 code units, with table+paragraph scoped locks, postcondition verification and one native LIFO Undo | Merged/multi-cell/rich/nested/structural table edits remain absent; same-table changes conservatively conflict; current installed-app E2E pending |
 | Other Word mutations such as paragraph structure, list creation, table structure, comment resolution, and revisions | absent | blocked | Existing editor internals only; no enabled Auralith capability contract | Full SDKJS-first capability lifecycle |
 | Spreadsheet document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Spreadsheet context, semantic read contract, selection/range identity, calculation/revision rules, and safe mutations |
@@ -93,7 +94,7 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Diagram document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Page/node context, semantic graph contract, selection identity, and mutation semantics |
 | Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; Button/Checkbox contracts and Host-mode keyboard safety are now enforced | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
-| macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; GUI E2E pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260806-212503` | Installed-app GUI E2E and public release certification |
+| macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; Auto formatting plus native Undo observed, remaining GUI E2E pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260806-214730` | Complete the installed-app Comment/fail/cancel/conflict and remaining-capability GUI matrix, then public release certification |
 | Cross-submodule verification | native, repository-gate scope | fast/full verified at exact pushed gitlinks | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Hosted CI and artifact publication |
 
 ### Production Word selection-write boundary
@@ -140,11 +141,13 @@ change feed marks table-level regions, so an edit to a different cell in the
 same table conservatively expires the pending target. This is a safe P0 false
 conflict, not evidence of cell-level concurrent rebasing.
 
-Source integration is not installed-app certification. Until the current build
-has exercised inspect -> select-mode -> authorize -> apply/fail/cancel -> native
-Undo in the installed test app, the matrix remains `partial` and release
-verification pending. No code may fall back to `window.Asc.plugin`, a generic
-desktop command, or an unvalidated RPC method.
+Source integration is not installed-app certification. The observed Auto bold
+write and native Undo are positive-path evidence only. Until the current build
+has exercised the complete inspect -> select-mode -> authorize ->
+apply/fail/cancel -> native Undo matrix in the installed test app, the
+capability remains `partial` and release verification pending. No code may fall
+back to `window.Asc.plugin`, a generic desktop command, or an unvalidated RPC
+method.
 
 ### Verification snapshot
 
@@ -153,9 +156,9 @@ production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
 The current branch was verified with Node.js 20.19.5 at exact fetchable gitlinks
-`desktop-sdk@28a543369362`, `web-apps@8cd9ac11b32c`, and
+`desktop-sdk@e3c4ca8a01b9`, `web-apps@8cd9ac11b32c`, and
 `sdkjs@935170484068`. All three TypeScript configurations and Biome over 492
-source files passed. Agent Vitest passed 140 files and 1,602/1,602 tests; Host
+source files passed. Agent Vitest passed 140 files and 1,604/1,604 tests; Host
 mode/profiles/runtime/executor/transport passed 87/87; Chromium Playwright
 passed 278/278, including 5/5 production Host mode cases. Focused SDKJS
 typed-write/cowork QUnit passed paragraph 14/67, comment 21/150, list 13/85,
@@ -169,10 +172,15 @@ The repository now contains guarded macOS and Windows test installers. The
 macOS `--stage-only` and explicit `--install` paths completed for the fixed
 user-local Test.app using isolated Vite and SDKJS builds, payload checks,
 same-volume transactional replacement, rollback, and strict deep signing. The
-recoverable copy is `Auralith_Editer Test.app.rollback/20260806-212503`. The
-macOS console was locked when native interaction testing began, so no
-inspect/mode/apply, failure/cancel, conflict, or Undo GUI result is claimed
-here until it is observed on that installed build.
+recoverable copy is `Auralith_Editer Test.app.rollback/20260806-214730`.
+Read/Comment/Auto mode switching, an immediate Auto-mode bold write on a real
+DOCX selection, and ordinary native Undo restoring the pre-write appearance
+were observed on the preceding install. That interaction also found an English
+comment command with an IME fullwidth `：` falling through to model chat;
+`desktop-sdk@e3c4ca8a01b9` fixes the parser and has been reinstalled. The
+console locked before the repaired Comment path could be re-observed. No
+failure/cancel, conflict, paragraph, list, table, or repaired Comment GUI result
+is claimed here until each is observed on the current installed build.
 
 ## Target architecture
 
@@ -713,8 +721,9 @@ Exit criteria:
 
 Source implementation status: complete. The production registry, dedicated
 transport, runtime authorizer, one-shot receipt, Host mode/executor,
-scoped-lock apply and built-in manifest are connected. The remaining exit gate
-is current installed-app runtime evidence.
+scoped-lock apply and built-in manifest are connected. Auto bold plus ordinary
+native Undo has been observed; the remaining exit gate is the complete current
+installed-app runtime matrix.
 
 Deliver:
 
@@ -795,7 +804,7 @@ Deliver:
 
 - Qt start-page and title-bar integration;
 - repository-owned macOS staged test installer with rollback (implemented;
-  current stage/install evidence pending);
+  current stage/install evidence recorded, interaction/release coverage pending);
 - Windows and macOS matching capability/hash receipts;
 - signed-package smoke tests and upgrade/rollback coverage;
 - public release checklist generated from the capability registry.
