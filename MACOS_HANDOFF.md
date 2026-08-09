@@ -27,7 +27,7 @@ of downloading the upstream `master` tree first.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `e3c4ca8a01b964e33e29ad77b52549bd54094585` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `89625df1d460065703984d8d5b9f57f06a80d2a9` |
 | `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `8cd9ac11b32cce2ba212a69283ec8781592051bf` |
 | `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `9351704840681841557dee80e2b93d9c2208db8a` |
 
@@ -66,6 +66,13 @@ Unmodified submodules remain on their official repositories.
   turns are preferred verbatim, older turns reduce to intent, bounded answer
   excerpts and source IDs that must be revalidated. Conversation memory is
   never document evidence. See `AURALITH_DOCUMENT_AGENT.md`.
+- Every answer now receives a deterministic Host-owned source plan. Explicit
+  document questions remain current-snapshot grounded; standalone creation and
+  explanation can use model knowledge; explicit combinations use document plus
+  model knowledge; current or browsing requests use the configured bounded web
+  search. Model-only requests neither scan nor lease the document. External
+  results are untrusted, limited to five HTTP(S) sources/24,000 excerpt
+  characters, and final Markdown URLs must match the request allowlist.
 - The source production registry enables
   `document.selection-formatting@1.1`,
   `document.selection-paragraph-formatting@1.0`,
@@ -137,7 +144,27 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
-The current 2026-08-06 checkpoint was run with Node.js 20.19.5 against the
+The 2026-08-09 multi-source checkpoint was run with Node.js 20.19.5 against
+`desktop-sdk@89625df1d460`:
+
+- Agent Vitest passed 141 files and 1,620/1,620 tests;
+- both Agent TypeScript configurations and Biome over 494 source files passed;
+- the screenshot-equivalent GPT introduction request routes to model knowledge
+  without document retrieval, remote-document consent, or fabricated document
+  citations;
+- document, hybrid, model, and external routing; optional/forbidden evidence;
+  strict quote validation; bounded search results; and external URL allowlists
+  have focused regression coverage;
+- the root `fast --network` verifier passed 244 focused Agent tests, all five
+  typed-write/cowork QUnit pages, repository/fork invariants, and the isolated
+  Agent Vite build.
+
+This checkpoint does not convert model knowledge into verified evidence and it
+does not claim live external research when no supported search provider is
+configured. Installed-app interaction evidence is recorded below only after a
+new guarded installation.
+
+The previous 2026-08-06 checkpoint was run with Node.js 20.19.5 against the
 fetchable gitlinks `desktop-sdk@e3c4ca8a01b9`, `web-apps@8cd9ac11b32c`, and
 `sdkjs@935170484068`:
 

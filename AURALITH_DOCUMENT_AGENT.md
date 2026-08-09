@@ -17,29 +17,74 @@ The sidebar follows a compact ChatGPT-style flow:
 5. durably replace the pending checkpoint with the verified answer;
 6. render citations on the answer that owns them.
 
-The request also owns an immutable snapshot lease. Ordinary typed document
-changes never cancel that request or release its image handles. They collapse
-into one pending refresh, the sidebar marks the answer as based on its send-time
-snapshot, and the latest document is read only after the request settles.
-Document/editor replacement, context-generation change, permission or mode
-change, consent withdrawal, and explicit Stop remain cancellation boundaries.
+A request owns an immutable snapshot lease only when its source plan uses the
+document. Ordinary typed document changes never cancel that grounded request or
+release its image handles. They collapse into one pending refresh, the sidebar
+marks the answer as based on its send-time snapshot, and the latest document is
+read only after the request settles. Model-only and external-only answers do not
+hold the document refresh path. Document/editor replacement,
+context-generation change, permission or mode change, consent withdrawal, and
+explicit Stop remain cancellation boundaries.
 
 If the app closes between steps 2 and 5, the pending record is restored as an
 explicit interrupted response. It is never relabeled as verified.
 
 ## Trust boundaries
 
-Three kinds of context remain separate:
+Five kinds of context remain separate:
 
 | Context | Purpose | Can support a factual claim? |
 | --- | --- | --- |
 | Current snapshot evidence | Paragraphs, tables, objects, pixels selected by retrieval | Yes, after current allowlist and citation validation |
+| Model knowledge | General creation, explanation, and stable background knowledge | Yes, but it is labeled as model knowledge and is neither document-verified nor live-verified |
+| Host-fetched external research | Bounded excerpts from the configured search provider | Yes, after URL/protocol/size validation; current claims must link to this request's URL allowlist |
 | Conversation memory | Resolve “it”, “the earlier table”, user preferences, and prior intent | No |
 | Trusted editor context | Document/revision identity, mode, capability versions, protection state | No document claims; may constrain authorization |
 
 Old assistant answers and their source IDs are never copied into the current
 evidence catalog. Historical source IDs carried by memory are hints only and
 must be found and validated again against the current manifest.
+
+## Per-request source planning
+
+The sidebar is an editor agent, not a document-only search box. Before
+retrieval or provider transport, a deterministic Host router produces one
+immutable source plan:
+
+| Plane | Document evidence | Model knowledge | External research |
+| --- | --- | --- | --- |
+| `document` | required | forbidden | forbidden |
+| `model` | forbidden | allowed | forbidden |
+| `hybrid` | required | allowed | forbidden |
+| `external` | required only for an explicit document comparison | allowed | required |
+
+Routing uses a small precedence order rather than a second model call:
+
+1. explicit browsing or time-sensitive wording such as “latest”, “today”, or
+   “official source” requires external research;
+2. an explicit request to combine the document with background knowledge uses
+   the hybrid plane;
+3. explicit document, selection, table, image, page, quote, or transform
+   wording remains document-only;
+4. a short referential follow-up inherits the previous completed answer plane;
+5. an otherwise standalone creation or explanation request uses model
+   knowledge.
+
+The plan can narrow access but the model cannot broaden it. A model-only call
+does not walk the manifest, does not request remote-document consent, emits no
+document source markers, and remains valid when the document changes. A
+document-only call retains the existing current-revision catalog, exact-quote
+verification, and minimum-one-reference Harness gate. Hybrid calls cite only
+claims derived from the document and distinguish uncited background knowledge.
+
+External search is a Host-selected Harness network operation, not a free-form
+model tool call. The current adapter accepts at most five unique HTTP(S)
+results, at most 6,000 excerpt characters per result and 24,000 total. Search
+content remains untrusted data. The final answer must contain a Markdown link
+from the exact request URL allowlist; an invented URL fails validation. If no
+supported search provider is configured or no usable result is returned, the
+request fails explicitly instead of silently falling back to possibly stale
+model knowledge.
 
 ## Conversation window algorithm
 
@@ -88,7 +133,8 @@ IndexedDB schema v3 adds two non-evictable stores:
 - `documentAgentSessions`: one session per `documentId`;
 - `documentAgentMessages`: ordered user/assistant records with request,
   snapshot, model target, configuration revision, context digest, citations,
-  and durable citation anchors.
+  durable citation anchors, selected answer plane, and whether the answer
+  actually depends on document evidence.
 
 Snapshot data, rendered assets, embeddings, and analyses remain in the bounded
 reader cache. Cache eviction therefore cannot delete the user's conversation.
@@ -140,6 +186,9 @@ replace native History, tracked revisions, locks, or Undo.
    rewrites from chat. The current deterministic chat router intentionally
    handles only complete-message, single-match commands; a delayed model result
    must never attach itself to whatever selection happens to be live later.
+8. Generalize the strict external-research adapter beyond the currently
+   configured Exa path while retaining the same bounded result contract, URL
+   allowlist validation, and Harness network audit.
 
 ## Provenance
 
