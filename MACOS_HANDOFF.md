@@ -27,9 +27,9 @@ of downloading the upstream `master` tree first.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `89625df1d460065703984d8d5b9f57f06a80d2a9` |
-| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `8cd9ac11b32cce2ba212a69283ec8781592051bf` |
-| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `9351704840681841557dee80e2b93d9c2208db8a` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `af427f2b2382b7f8c0431025d7002205325bf0df` |
+| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `6efd1d50c0e78a873fd4bc9ccbef3120e4c95e8b` |
+| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `05da903a3ed976639bc55cbfa6b2e441de65d493` |
 
 Unmodified submodules remain on their official repositories.
 
@@ -154,10 +154,10 @@ removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
 The 2026-08-09 automatic body-write checkpoint was run with Node.js 20.19.5
-against the fetchable gitlinks `desktop-sdk@a600e8a4`,
+against the fetchable gitlinks `desktop-sdk@af427f2b`,
 `web-apps@6efd1d50c`, and `sdkjs@05da903a3`:
 
-- Agent Vitest passed 145 files and 1,645/1,645 tests;
+- Agent Vitest passed 145 files and 1,646/1,646 tests;
 - all three Agent TypeScript configurations and Biome over 503 source files
   passed;
 - Host write profiles/runtime/executor/transport passed 90/90 Node tests;
@@ -166,6 +166,16 @@ against the fetchable gitlinks `desktop-sdk@a600e8a4`,
 - the new SDKJS body suite passed 4 tests/19 assertions, including exact
   mixed-body replacement, revision drift rejection, single-use tokens and one
   native Undo restoring the original paragraph/table object graph;
+- installed `Auralith_Editer Test.app` interaction against a temporary table
+  fixture observed Auto mode with GPT 5.6 Luna replace the complete table body
+  with a generated DOCX/Markdown comparison, display a Host-verified receipt,
+  and restore the original table with one ordinary native Undo;
+- the same installed build observed the deterministic `Clear the entire
+  document body.` path replace the main body with zero UTF-16 code units,
+  followed by one native Undo restoring the table. The screenshot's exact
+  Chinese command is covered by the intent regression test; the GUI driver used
+  an ASCII semantic equivalent because its synthetic typing path drops CJK
+  composition text in this embedded surface;
 - the screenshot-equivalent GPT introduction request routes to model knowledge
   without document retrieval, remote-document consent, or fabricated document
   citations;
@@ -178,19 +188,17 @@ against the fetchable gitlinks `desktop-sdk@a600e8a4`,
 
 This checkpoint does not convert model knowledge into verified evidence and it
 does not claim live external research when no supported search provider is
-configured. The prior guarded `--install` transaction rebuilt the Agent and
-desktop Word SDK, passed staged and installed deep-signature/designated-
-requirement checks, and atomically replaced the dedicated test app at
-`/Users/openclaw_server/Applications/Auralith_Editer Test.app`. The new
-whole-body build still requires a fresh install and installed-window E2E. The
-current recoverable pre-swap copy before that transaction is:
+configured. The guarded `--install` transaction rebuilt the Agent and desktop
+Word SDK, passed staged and installed deep-signature/designated-requirement
+checks, and atomically replaced the dedicated test app at
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app`. The current
+recoverable pre-swap copy is:
 
-`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260809-152846`
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260809-223554`
 
-This install proves packaging and signature integrity, not a provider-backed
-answer. The screenshot-equivalent model-only request and configured external
-search still require an unlocked GUI session with the user's provider
-credentials before their installed-app behavior can be claimed as observed.
+The installed run proves the provider-backed whole-body generation/apply and
+deterministic clear/Undo paths described above. Configured external web search
+remains outside this checkpoint and must not be claimed as live-tested here.
 
 The previous 2026-08-06 checkpoint was run with Node.js 20.19.5 against the
 fetchable gitlinks `desktop-sdk@e3c4ca8a01b9`, `web-apps@8cd9ac11b32c`, and
