@@ -161,8 +161,18 @@ The 2026-08-09 multi-source checkpoint was run with Node.js 20.19.5 against
 
 This checkpoint does not convert model knowledge into verified evidence and it
 does not claim live external research when no supported search provider is
-configured. Installed-app interaction evidence is recorded below only after a
-new guarded installation.
+configured. The guarded `--install` transaction then rebuilt the Agent and
+desktop Word SDK, passed staged and installed deep-signature/designated-
+requirement checks, and atomically replaced the dedicated test app at
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app`. Its recoverable
+pre-swap copy is:
+
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260809-152846`
+
+This install proves packaging and signature integrity, not a provider-backed
+answer. The screenshot-equivalent model-only request and configured external
+search still require an unlocked GUI session with the user's provider
+credentials before their installed-app behavior can be claimed as observed.
 
 The previous 2026-08-06 checkpoint was run with Node.js 20.19.5 against the
 fetchable gitlinks `desktop-sdk@e3c4ca8a01b9`, `web-apps@8cd9ac11b32c`, and
