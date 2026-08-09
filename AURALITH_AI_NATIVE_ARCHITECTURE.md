@@ -87,6 +87,7 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | `document.selection-list-formatting@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Inspect/set level 0..8 for existing bullet/numbered lists in a bounded plain main-document selection, with scoped locks and one native LIFO Undo | List creation/conversion/renumbering remain out of scope; current installed-app E2E pending |
 | `document.comment@1.0` | partial, full source path | production source enabled; IME separator parser repaired and installed; GUI retest pending | Exact-quote-bound inspect/add for a native Host-authored Auralith comment on a plain main-document selection, with durable native receipt, scoped locks and one native LIFO Undo | Re-observe add/Undo on the current build; resolve/reply/revision-review operations remain absent |
 | `document.selection-table-cell-text@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Full plain-text replacement of exactly one simple unmerged cell, bounded to one paragraph/ordinary run and 4096 UTF-16 code units, with table+paragraph scoped locks, postcondition verification and one native LIFO Undo | Merged/multi-cell/rich/nested/structural table edits remain absent; same-table changes conservatively conflict; current installed-app E2E pending |
+| `document.body-text-replacement@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Explicit whole-body clear or generated plain-text replacement in Auto mode; generation is lock-free, apply is bound to the pre-generation content revision and exact main body, mutation uses short scoped locks, rollback proof and one native LIFO Undo | Installed-app replace/delete/Undo and stale-during-generation evidence; rich structure, arbitrary-range generation and track-revisions output remain absent |
 | Other Word mutations such as paragraph structure, list creation, table structure, comment resolution, and revisions | absent | blocked | Existing editor internals only; no enabled Auralith capability contract | Full SDKJS-first capability lifecycle |
 | Spreadsheet document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Spreadsheet context, semantic read contract, selection/range identity, calculation/revision rules, and safe mutations |
 | Presentation document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Slide/object context, semantic read contract, selection identity, transaction and Undo rules |
@@ -101,10 +102,10 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 
 The source production gate, dedicated receipt transport, Harness descriptors,
 runtime authorizer, Host mode/executor and Reader command paths are now
-connected for exactly five capabilities: text formatting, paragraph
-formatting, existing-list level, selection comment add, and strict table-cell
-plain-text replacement. The built-in manifest derives these enabled entries
-from the typed Office registry.
+connected for exactly six capabilities: text formatting, paragraph formatting,
+existing-list level, selection comment add, strict table-cell plain-text
+replacement, and revision-bound main-body plain-text replacement. The built-in
+manifest derives these enabled entries from the typed Office registry.
 
 Writes deliberately remain outside the five-method read-only snapshot RPC
 allowlist. The Reader receives only a bounded preview, an opaque one-shot Host
@@ -155,18 +156,17 @@ The 2026-08-04 counts and installation hash predate the five-capability
 production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
-The current branch was verified with Node.js 20.19.5 at exact fetchable gitlinks
-`desktop-sdk@e3c4ca8a01b9`, `web-apps@8cd9ac11b32c`, and
-`sdkjs@935170484068`. All three TypeScript configurations and Biome over 492
-source files passed. Agent Vitest passed 140 files and 1,604/1,604 tests; Host
-mode/profiles/runtime/executor/transport passed 87/87; Chromium Playwright
-passed 278/278, including 5/5 production Host mode cases. Focused SDKJS
-typed-write/cowork QUnit passed paragraph 14/67, comment 21/150, list 13/85,
-table-cell 20/160, and remote cowork 24/262; the
-full registered run also passed `pluginsApi` 36/383 and multimodal snapshot
-28/335. The isolated desktop Word Closure compile, isolated Agent Vite build,
-and both fast/full root verifiers with network fetch probes passed without
-writing tracked or packaged deploy assets.
+The current source branch was verified with Node.js 20.19.5 at exact fetchable
+gitlinks `desktop-sdk@a600e8a4`, `web-apps@6efd1d50c`, and
+`sdkjs@05da903a3`. All three TypeScript configurations and Biome over 503
+source files passed. Agent Vitest passed 145 files and 1,645/1,645 tests; Host
+mode/profiles/runtime/executor/transport passed 90/90; Chromium Playwright
+passed 278/278, including production Read/Comment/Auto authorization and an
+Auto whole-body authorize/execute path. Focused SDKJS typed-write/cowork QUnit
+passed body replacement 4/19, paragraph 14/67, comment 21/150, list 13/85,
+table-cell 20/160, and remote cowork 24/262. Full root verification with the
+new root gitlinks and installed-app body-write evidence remain separate gates
+and MUST NOT be inferred from these source results.
 
 The repository now contains guarded macOS and Windows test installers. The
 macOS `--stage-only` and explicit `--install` paths completed for the fixed

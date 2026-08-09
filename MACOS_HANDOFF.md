@@ -37,9 +37,10 @@ Unmodified submodules remain on their official repositories.
 
 - `sdkjs` contains the read-only DOCX multimodal snapshot contract,
   structure/object inventory, asset chunking, stale-version checks and source
-  navigation, plus the five bounded Word selection-write semantics: text and
-  paragraph formatting, existing-list level, exact-selection comment add, and
-  strict single-simple-cell plain-text replacement.
+  navigation, plus six bounded Word write semantics: text and paragraph
+  formatting, existing-list level, exact-selection comment add, strict
+  single-simple-cell plain-text replacement, and revision-bound main-body
+  plain-text replacement.
 - `web-apps` contains the built-in editor host, header entry, advanced
   settings integration, restricted snapshot bridge, closed write profiles,
   Host-owned document mode/executor and dedicated opaque-receipt write
@@ -77,7 +78,8 @@ Unmodified submodules remain on their official repositories.
   `document.selection-formatting@1.1`,
   `document.selection-paragraph-formatting@1.0`,
   `document.selection-list-formatting@1.0`, `document.comment@1.0`, and
-  `document.selection-table-cell-text@1.0`. The Host owns one per-document
+  `document.selection-table-cell-text@1.0`, plus
+  `document.body-text-replacement@1.0`. The Host owns one per-document
   `read/comment/auto` mode: `read` denies writes, `comment` permits only native
   comments, and `auto` permits all registered bounded writes. `comment/auto`
   skip repetitive per-operation confirmation, while every write still uses an
@@ -88,6 +90,13 @@ Unmodified submodules remain on their official repositories.
   unmerged, top-level cell. It is not a rich-text or structural table editor.
   The current table-level change feed conservatively treats an edit to another
   cell in the same table as a conflict.
+- Whole-body P0 is available only in `auto` mode and only for explicit
+  whole-document clear/replace instructions. Generation is lock-free and binds
+  the final write to the snapshot content revision captured before generation;
+  any intervening human edit causes a fail-closed stale result. The short final
+  mutation replaces only the main body with bounded plain text in one native
+  LIFO Undo point. Headers, footers and document settings stay outside the
+  target; rich formatting and arbitrary-range generation are not claimed.
 
 The current Windows test build can exercise the editor-level Agent. A fully
 native start-page/title-bar integration still requires rebuilding the Qt
@@ -144,28 +153,37 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
-The 2026-08-09 multi-source checkpoint was run with Node.js 20.19.5 against
-`desktop-sdk@89625df1d460`:
+The 2026-08-09 automatic body-write checkpoint was run with Node.js 20.19.5
+against the fetchable gitlinks `desktop-sdk@a600e8a4`,
+`web-apps@6efd1d50c`, and `sdkjs@05da903a3`:
 
-- Agent Vitest passed 141 files and 1,620/1,620 tests;
-- both Agent TypeScript configurations and Biome over 494 source files passed;
+- Agent Vitest passed 145 files and 1,645/1,645 tests;
+- all three Agent TypeScript configurations and Biome over 503 source files
+  passed;
+- Host write profiles/runtime/executor/transport passed 90/90 Node tests;
+- Chromium Playwright passed 278/278, including production Read, Comment and
+  Auto mode authorization plus an Auto whole-body authorize/execute path;
+- the new SDKJS body suite passed 4 tests/19 assertions, including exact
+  mixed-body replacement, revision drift rejection, single-use tokens and one
+  native Undo restoring the original paragraph/table object graph;
 - the screenshot-equivalent GPT introduction request routes to model knowledge
   without document retrieval, remote-document consent, or fabricated document
   citations;
 - document, hybrid, model, and external routing; optional/forbidden evidence;
   strict quote validation; bounded search results; and external URL allowlists
   have focused regression coverage;
-- the root `fast --network` verifier passed 244 focused Agent tests, all five
-  typed-write/cowork QUnit pages, repository/fork invariants, and the isolated
-  Agent Vite build.
+- the root focused verifier now includes all document-body normalization,
+  intent, Harness, transport and SDKJS tests in addition to the existing
+  typed-write/cowork matrix and isolated Agent Vite build.
 
 This checkpoint does not convert model knowledge into verified evidence and it
 does not claim live external research when no supported search provider is
-configured. The guarded `--install` transaction then rebuilt the Agent and
+configured. The prior guarded `--install` transaction rebuilt the Agent and
 desktop Word SDK, passed staged and installed deep-signature/designated-
 requirement checks, and atomically replaced the dedicated test app at
-`/Users/openclaw_server/Applications/Auralith_Editer Test.app`. Its recoverable
-pre-swap copy is:
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app`. The new
+whole-body build still requires a fresh install and installed-window E2E. The
+current recoverable pre-swap copy before that transaction is:
 
 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260809-152846`
 

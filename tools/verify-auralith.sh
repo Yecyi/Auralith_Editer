@@ -235,8 +235,12 @@ if [[ "$mode" == "fast" ]]; then
             src/office-tools/selection-comment.test.ts \
             src/office-tools/selection-list-formatting.test.ts \
             src/office-tools/selection-table-cell-text.test.ts \
+            src/office-tools/document-body-text.test.ts \
             src/document-reader/integration/builtin-document-rpc.test.ts \
             src/document-reader/integration/document-agent-mode.test.ts \
+            src/document-reader/integration/document-body-text-agent.test.ts \
+            src/document-reader/integration/document-body-text-command.test.ts \
+            src/document-reader/integration/document-body-write-intent.test.ts \
             src/document-reader/integration/immediate-selection-write-intent.test.ts \
             src/document-reader/integration/selection-formatting-agent.test.ts \
             src/document-reader/integration/selection-formatting-command.test.ts \
@@ -272,6 +276,7 @@ if [[ "$mode" == "fast" ]]; then
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionComment.html
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionListFormatting.html
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionTableCellText.html
+    node tools/run-sdkjs-qunit.mjs word/plugins/documentBodyText.html
     node tools/run-sdkjs-qunit.mjs word/plugins/remoteCollaborativeApply.html
 else
     step "Full Agent source and unit checks"

@@ -138,9 +138,9 @@ V1 仅允许 `all-or-nothing`。任一 target 无法解析、权限/保护/锁�
 
 B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区分 content / structure / location / presentation 指纹，同时保留总 `blocks` change set 兼容旧消费者。它不会放松增量读取门槛；只有连续、本地、单段落的纯文字 delta 走增量路径，未知、混合、非本地、revision gap、overflow、fullRescan 或 layout pending 仍完整刷新。由于当前 DOCX 快照尚未输出 run-level font/color/size，此能力不应被描述为“真实格式修改已经零索引成本”。
 
-### 五个已接通的选区写能力
+### 六个已接通的 Word 写能力
 
-源码中的 production capability registry 已启用下列五个能力。它们都经过专用的 SDKJS 方法、有界 schema、Host write profile/executor、不透明一次性 receipt transport、Harness descriptor/runtime authorizer 和 Reader 端模式门禁；写入不进入五方法的只读快照 RPC allowlist，也不向 iframe 暴露 selection token、revision、SDKJS 方法名或原始文档定位。
+源码中的 production capability registry 已启用下列六个能力。它们都经过专用的 SDKJS 方法、有界 schema、Host write profile/executor、不透明一次性 receipt transport、Harness descriptor/runtime authorizer 和 Reader 端模式门禁；写入不进入五方法的只读快照 RPC allowlist，也不向 iframe 暴露 selection token、revision、SDKJS 方法名或原始文档定位。
 
 | Capability | 当前严格范围 | SDKJS operations |
 | --- | --- | --- |
@@ -149,6 +149,7 @@ B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区�
 | `document.selection-list-formatting@1.0` | 仅对主文档中已存在的项目符号/编号列表设置 0..8 内部层级，最多 128 个段落 | `GetSelectionListFormatting` / `ApplySelectionListFormatting` |
 | `document.comment@1.0` | 在主文档的精确非空选区上添加具有 Host 端 Auralith 身份的原生批注；authorization 绑定精确 quote | `GetSelectionCommentTarget` / `AddSelectionComment` |
 | `document.selection-table-cell-text@1.0` | **只支持单一 simple unmerged cell 的全部纯文本替换**：单段落、单普通 run、无字段/超链接/数学/图形/批注/嵌套表格/SDT，新文本最多 4096 UTF-16 code units，不含换行和控制字符 | `GetSelectionTableCellTextTarget` / `ReplaceSelectionTableCellText` |
+| `document.body-text-replacement@1.0` | **只支持主文档整篇正文的纯文本清空/替换**：必须是明确整篇命令，生成前绑定 content revision，新正文最多 131072 UTF-16 code units，旧正文最多 1 MiB/2048 个顶层块 | `GetDocumentBodyTextTarget` / `ReplaceDocumentBodyText` |
 
 ### 与生俱来的聊天写入路由
 
@@ -160,13 +161,23 @@ Host receipt 写链路；它不要求配置模型，也不弹出逐操作确认�
 - 选中段落的对齐、间距、缩进和行距；
 - 已存在列表的 1..9 级层级；
 - 带有明确批注正文的选区批注；
-- 带有明确新文本的当前简单单元格完整替换。
+- 带有明确新文本的当前简单单元格完整替换；
+- 明确指向整篇正文的清空，或“删除/替换整篇正文并生成……”命令。
 
 带正文 payload 的批注与单元格命令统一接受 ASCII `:` 和桌面输入法可能保留的全角 `：`；两种分隔符进入相同的长度、控制字符、模式和单一意图校验，不会扩大可写范围。
 
-`read` 不会路由任何写入，`comment` 只路由批注，`auto` 才路由全部五类。
-问句、多操作句、改写/生成请求、越界参数、多行输入或不唯一匹配一律不触发
-写入，而是留在普通问答路径。这个保守边界是为了在用户持续编辑时不写错目标。
+`read` 不会路由任何写入，`comment` 只路由批注，`auto` 才路由全部六类。
+除明确的整篇正文生成式替换外，问句、多操作句、自由改写/生成请求、越界参数、
+多行输入或不唯一匹配一律不触发写入，而是留在普通问答路径。这个保守边界是
+为了在用户持续编辑时不写错目标；“删除这一段”或“改写选中内容”不会被提升为
+整篇删除。
+
+整篇替换采用两阶段 no-pause 协议：提交时记录 `baseContentRevision`，模型生成与
+检索期间不持有编辑锁；生成结束后 Host/SDKJS 重新检查同一文档、正文 revision、
+精确正文文本和顶层块集合，只在全部一致时申请短 scoped lock 并提交一个原生
+history point。人类在生成期间的任何正文修改都会得到 `STALE`，不会被 Agent
+静默覆盖。模型只负责生成最终正文；权限、目标、事务、回滚证明和 receipt 均由
+闭集 Host/SDKJS 控制面决定。
 
 任意 LLM 改写不能在数秒规划后直接使用届时的实时选区。下一阶段必须先在
 用户提交时由 Host 签发不透明 `selection lease`，绑定文档、位置、quote、revision
@@ -195,7 +206,7 @@ fail-closed。
 
 SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资源/世代/owner 保护；那条 incoming replay 路径与 Agent 发出的 scoped-lock 写入不是同一个事务。
 
-上述 production 源码路径已接通。安装版真实窗口已经观察到三模式切换、Auto 模式的确定性加粗写入，以及普通原生 Undo 恢复写入前状态；这只证明该正向链路，不代表全部能力已完成安装版认证。Comment 写入、失败/取消、冲突以及其余写能力仍须在当前安装构建中逐项执行 `inspect → select-mode → authorize → apply/fail/cancel → Undo` GUI E2E。
+上述 production 源码路径已接通。安装版真实窗口已经观察到三模式切换、Auto 模式的确定性加粗写入，以及普通原生 Undo 恢复写入前状态；这只证明该正向链路，不代表全部能力已完成安装版认证。整篇替换的源码测试与构建已通过，但在本节写入时安装版 GUI E2E 仍待执行。Comment 写入、失败/取消、冲突以及其余写能力仍须在当前安装构建中逐项执行 `inspect → select-mode → authorize → apply/fail/cancel → Undo` GUI E2E。
 
 ## 新增文件格式的实施契约
 
@@ -208,15 +219,15 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 
 ## 测试边界
 
-2026-08-06 当前结果：Node.js 20.19.5；三套 TypeScript 通过；Biome 492 个源码文件通过；Agent Vitest 140 个文件、1,604/1,604；Host mode/write profiles/runtime/executor/transport 87/87；Chromium Playwright 278/278，其中生产 Host 三模式用例 5/5。SDKJS typed-write/cowork QUnit 通过 paragraph 14/67、comment 21/150、list 13/85、table-cell 20/160、remote cowork 24/262，完整注册运行另通过 `pluginsApi` 36/383 与 multimodal snapshot 28/335。隔离 desktop Word Closure、隔离 Vite、fast/full `--network` 根验证器全部通过；精确 gitlink 为 `desktop-sdk@e3c4ca8a01b9`、`web-apps@8cd9ac11b32c`、`sdkjs@935170484068`。
+2026-08-09 当前源码结果：Node.js 20.19.5；三套 TypeScript 通过；Biome 503 个源码文件通过；Agent Vitest 145 个文件、1,645/1,645；Host mode/write profiles/runtime/executor/transport 90/90；Chromium Playwright 278/278，其中生产三模式用例同时覆盖 Auto 整篇正文 authorize/execute。SDKJS 新增整篇正文 QUnit 4/19，并继续通过 paragraph 14/67、comment 21/150、list 13/85、table-cell 20/160、remote cowork 24/262。精确可获取 gitlink 为 `desktop-sdk@a600e8a4`、`web-apps@6efd1d50c`、`sdkjs@05da903a3`；完整根验证器与新安装版窗口证据在根 gitlink 提交后执行，未执行部分不得提前标记通过。
 
 当前 Test.app 的安装回滚点是 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260806-214730`。安装后的 payload、production entry、bundle shape、深层 ad-hoc 签名和 designated requirement 已验证。前一安装构建已在真实 GUI 中证明三模式切换、Auto 确定性加粗与普通原生 Undo；当前构建另包含英文命令对输入法全角 `：` 的确定性解析修复。Comment 正向链路及剩余失败/取消/冲突矩阵仍须在解锁后的当前安装构建中复测。
 
-源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、五个 Reader 操作链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
+源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、六个 Reader 操作链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
 
 - Harness/Prompt 单元测试覆盖状态机、取消、能力、Evidence、ToolPolicy、格式冲突、降级和提示注入。
 - Model Center 测试覆盖 endpoint 身份轮换、能力隔离、密钥引用迁移和模型目录竞态。
 - DOCX 专用读取管线覆盖快照一致性、视觉缓存隔离、Provider Session 隔离、能力探测和来源引用。
 - Playwright 覆盖“模型中心选择模型 → DOCX 读取”以及五种编辑器宿主。
 - SDKJS QUnit 覆盖轻量 preflight 与完整快照的执行边界。
-- 五个选区写契约覆盖严格输入、mixed/结构状态、单次 token、原生位置与 quote 绑定、版本/选区过期、无副作用读取、scoped locks、事务回滚、单个原生 Undo，以及 committed/unknown 结果不重试。
+- 六个 Word 写契约覆盖严格输入、mixed/结构状态、单次 token、原生位置与 quote/revision 绑定、版本/选区过期、无副作用读取、scoped locks、事务回滚、单个原生 Undo，以及 committed/unknown 结果不重试。
