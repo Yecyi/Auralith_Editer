@@ -1,10 +1,10 @@
 # Auralith AI-native Office architecture
 
 Status: normative architecture and delivery contract
-Implementation status refreshed: 2026-08-10; current component suites and
-focused root automation, staged/formal test-app installation and signing passed. The root
-`full` verifier was not rerun this round, and the current installed GUI was not
-retested because macOS was locked; older GUI evidence is historical only
+Implementation status refreshed: 2026-08-10; current component suites,
+root `fast --network` and `full --network`, staged/formal test-app installation
+and signing passed. The current installed GUI was not retested because macOS
+was locked; older GUI evidence is historical only
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
 Office capabilities. It covers SDKJS document semantics, editor context,
@@ -99,7 +99,7 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; Button/Checkbox contracts and Host-mode keyboard safety are now enforced | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
 | macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; current GUI retest blocked by macOS lock | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260810-141832` | Unlock and complete the current installed-app selection/exact replacement, Comment, fail/cancel/conflict and Undo matrix, then public release certification |
-| Cross-submodule verification | native, repository-gate scope | current `fast --network` and component suites verified; current root `full` not rerun | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Rerun `full --network`, then add hosted CI and artifact publication |
+| Cross-submodule verification | native, repository-gate scope | current `fast --network` and `full --network` verified | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Add hosted CI and artifact publication |
 
 ### Production Word selection-write boundary
 
@@ -187,7 +187,7 @@ production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
 The current source branch was verified at the pushed submodule commits
-`desktop-sdk@48caf211`, `web-apps@fa600a69c`, and `sdkjs@e9b392c12`.
+`desktop-sdk@27f7b107`, `web-apps@fa600a69c`, and `sdkjs@e9b392c12`.
 Desktop full Vitest passed 150 files and 1,714/1,714 tests; Biome passed 514
 files; all three TypeScript configurations and `npx vite build` (3,346 modules)
 passed; Reader Chromium Playwright passed 21/21. Host focused tests passed
@@ -196,8 +196,10 @@ regression passed 4 files/32 tests. SDKJS text replacement passed 16 tests/105 a
 4/19, paragraph 14/67, comment 21/150, list 13/85, table-cell 20/160 and remote
 cowork 24/262. After the root gitlink commit, `fast --network` passed exact
 fork fetchability, focused Agent 50 files/370 tests, every focused SDKJS page
-and the isolated Vite build. The root `full` verifier was not run this round
-and MUST NOT be inferred from the current component or fast-network results.
+and the isolated Vite build. The final root `full --network` also passed Host
+contracts, full desktop Vitest 150 files/1,714 tests, Chromium Playwright
+278/278, all nine Auralith SDKJS QUnit pages, isolated Word Closure and the
+3,346-module Vite build without writing tracked or packaged deploy assets.
 
 The repository contains guarded macOS and Windows test installers. Both macOS
 `--stage-only` and the final explicit `--install` completed for the fixed
@@ -209,7 +211,8 @@ receive a GUI interaction retest. Earlier installed builds have historical
 positive evidence for mode switching, Auto formatting/body replacement and
 ordinary native Undo, but that evidence MUST NOT be presented as proof of the
 current package or of the new selection/unique/all/delete text-replacement
-paths.
+paths. The final `desktop-sdk@27f7b107` follow-up changes browser E2E fixtures
+only and therefore does not alter the installed production payload.
 
 ## Target architecture
 

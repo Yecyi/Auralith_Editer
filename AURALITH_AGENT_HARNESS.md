@@ -242,7 +242,7 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 
 ## 测试边界
 
-2026-08-10 当前源码结果基于已推送子模块 `desktop-sdk@48caf211`、
+2026-08-10 当前源码结果基于已推送子模块 `desktop-sdk@27f7b107`、
 `web-apps@fa600a69c`、`sdkjs@e9b392c12`：desktop 全量 Vitest 150 个文件、
 1,714/1,714 tests，Biome 514 个文件、三套 TypeScript 配置与 `npx vite build`
 （3,346 modules）通过，Reader Chromium Playwright 21/21；Host 聚焦测试 96/96，
@@ -251,7 +251,10 @@ SDKJS 新增 text-replacement QUnit 16 tests/105 assertions，并继续通过 pa
 14/67、comment 21/150、list 13/85、table-cell 20/160、body 4/19、remote cowork
 24/262。根 gitlink 提交后的 `fast --network` 通过三个 fork 的精确 fetchability、
 focused Agent 50 files/370 tests、全部聚焦 SDKJS pages 与 isolated Vite build。
-本轮没有运行 `full` verifier；该门禁仍不得由上述结果推断为通过。
+最终 `full --network` 也通过：Host contracts、desktop 150 files/1,714 tests、
+Chromium Playwright 278/278、全部九个 Auralith SDKJS QUnit pages、isolated Word
+Closure 与 3,346-module Vite build 均为绿色，且没有写入 tracked 或 packaged
+deploy assets。
 
 本轮 `--stage-only` 与最终正式 `--install` 均成功；最终安装包通过 3,346-module
 Vite build、Word Closure、payload、production entry、bundle shape、strict deep
@@ -259,6 +262,8 @@ signature 与 designated-requirement 检查。当前回滚点是
 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260810-141832`。
 macOS 当时处于锁屏状态，因此没有对当前包执行 GUI 交互复测；旧包的可见成功不能
 替代当前包的 selection/exact replacement、失败/取消/冲突和 Undo 矩阵。
+最终 `desktop-sdk@27f7b107` 仅补浏览器 E2E fixture，不改变已安装的 production
+payload，因此无需为该测试提交再次替换 Test.app。
 
 源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、七个 Reader 写操作链、`document.selection-text` 只读链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
 

@@ -27,7 +27,7 @@ of downloading the upstream `master` tree first.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `48caf211e6e530e4727a2eb25b63315b2d622d18` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `27f7b10745baeefe4f0e16b6b9d9e0b197f7e938` |
 | `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `fa600a69cabc868efd4e28a3fb502ee89a82bfcc` |
 | `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `e9b392c1275eb3ad01560a1c46d725133e2a3eeb` |
 
@@ -171,7 +171,7 @@ removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
 The 2026-08-10 document-text replacement checkpoint uses the pushed submodule
-commits `desktop-sdk@48caf211`, `web-apps@fa600a69c`, and
+commits `desktop-sdk@27f7b107`, `web-apps@fa600a69c`, and
 `sdkjs@e9b392c12`:
 
 - desktop full Vitest passed 150 files and 1,714/1,714 tests; all three
@@ -185,14 +185,19 @@ commits `desktop-sdk@48caf211`, `web-apps@fa600a69c`, and
   list 13/85, table-cell 20/160, body 4/19 and remote cowork 24/262;
 - root `fast --network` passed exact fork fetchability, focused Agent 50
   files/370 tests, all focused SDKJS pages and the isolated Vite build;
+- root `full --network` then passed exact fork fetchability, Host contracts,
+  desktop full Vitest 150 files/1,714 tests, Chromium Playwright 278/278, all
+  nine Auralith SDKJS QUnit pages, isolated Word Closure and the 3,346-module
+  Vite build without writing tracked or packaged deploy assets;
 - both `--stage-only` and the final formal `--install` completed; the final
   package passed the 3,346-module Vite build, Word Closure compile, payload,
   strict deep signature and designated-requirement checks. The recoverable
   pre-swap copy is `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260810-141832`.
 
-This round did **not** run the root `full` verifier. The post-gitlink
-`fast --network` gate passed; run the remaining full gate separately. macOS was
-locked after installation, so the current app was **not** GUI-retested. Do not
+The post-gitlink root `fast --network` and `full --network` gates both passed.
+The final `desktop-sdk@27f7b107` follow-up changes only browser E2E fixtures, so
+it does not alter the already installed production payload. macOS was locked
+after installation, so the current app was **not** GUI-retested. Do not
 report the new natural-language selection/unique/all/delete routes, Host
 receipt, fail/cancel behavior or native Undo as installed-window evidence until
 they are observed on this exact package. Positive GUI observations below belong
