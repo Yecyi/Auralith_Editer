@@ -1,9 +1,10 @@
 # Auralith AI-native Office architecture
 
 Status: normative architecture and delivery contract
-Implementation status refreshed: 2026-08-06; full automated verification and
-test-app installation passed; installed Auto formatting plus native Undo has
-positive GUI evidence, while the remaining installed-app matrix is pending
+Implementation status refreshed: 2026-08-10; current component suites and
+focused root automation, staged/formal test-app installation and signing passed. The root
+`full` verifier was not rerun this round, and the current installed GUI was not
+retested because macOS was locked; older GUI evidence is historical only
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
 Office capabilities. It covers SDKJS document semantics, editor context,
@@ -63,8 +64,8 @@ release readiness requires every release gate in this document.
 
 The current implementation is split across three modified submodules:
 
-- `sdkjs` owns Word document snapshots and the five bounded Word selection-write
-  semantics described below.
+- `sdkjs` owns Word document snapshots, bounded selection-text reading, and the
+  seven bounded Word write semantics described below.
 - `web-apps` owns the built-in editor launcher, panel, Advanced Settings
   integration, theme mapping, and restricted iframe bridge.
 - `desktop-sdk/ChromiumBasedEditors/plugins/ai-agent` owns the Agent UI,
@@ -82,12 +83,14 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Provider/model settings and remote-evidence consent | native, test-build scope | test-build verified | Shared settings view, Advanced Settings host integration, model capability checks, local storage synchronization, and explicit remote-document consent | Central capability negotiation must consume the same registry as Office tools |
 | DOCX multimodal snapshot, retrieval, citations, and source navigation | native, DOCX read-only scope | test-build verified | Five bounded SDKJS snapshot methods, revision checks, lazy assets, evidence catalog, citations, document-change invalidation, and a registry-derived Agent bridge/manifest | General release certification; generate the web-apps host projection instead of relying only on a parity test |
 | General Agent Harness lifecycle, evidence policy, and tool policy | partial, source path connected | production source enabled for declared capabilities; partial installed GUI evidence | Typed lifecycle, canonical Office registry, production descriptors, Host-owned `read/comment/auto` mode, runtime authorizer, immutable one-shot receipts, cancellation boundary, authoritative outcome propagation, and no-retry handling for committed/unknown dispatch | Complete the installed-app fail/cancel/conflict matrix and broader migration of generic chat to the same control plane |
-| `document.selection-formatting@1.1` | partial, full source path | Auto bold plus one native Undo observed in the installed app; full E2E pending | Side-effect-free inspect plus bounded text-format apply; mixed script-aware properties, exact fonts, no-lock preload, region rebase, short scoped remote lock, mode-bound immutable authorization, one native LIFO Undo | Current-build failure/cancel/stale/read-only/lock evidence and the remaining formatting matrix |
+| `document.selection-formatting@1.1` | partial, full source path | historical installed Auto-bold/Undo evidence; current-package E2E pending | Side-effect-free inspect plus bounded text-format apply; mixed script-aware properties, exact fonts, no-lock preload, region rebase, short scoped remote lock, mode-bound immutable authorization, one native LIFO Undo | Current-build failure/cancel/stale/read-only/lock evidence and the remaining formatting matrix |
 | `document.selection-paragraph-formatting@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Inspect/apply for alignment, spacing and indents across at most 256 selected paragraphs, with region rebase, scoped locks, rollback proof and one native LIFO Undo | Current package/hash refresh and installed-app E2E |
 | `document.selection-list-formatting@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Inspect/set level 0..8 for existing bullet/numbered lists in a bounded plain main-document selection, with scoped locks and one native LIFO Undo | List creation/conversion/renumbering remain out of scope; current installed-app E2E pending |
 | `document.comment@1.0` | partial, full source path | production source enabled; IME separator parser repaired and installed; GUI retest pending | Exact-quote-bound inspect/add for a native Host-authored Auralith comment on a plain main-document selection, with durable native receipt, scoped locks and one native LIFO Undo | Re-observe add/Undo on the current build; resolve/reply/revision-review operations remain absent |
 | `document.selection-table-cell-text@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Full plain-text replacement of exactly one simple unmerged cell, bounded to one paragraph/ordinary run and 4096 UTF-16 code units, with table+paragraph scoped locks, postcondition verification and one native LIFO Undo | Merged/multi-cell/rich/nested/structural table edits remain absent; same-table changes conservatively conflict; current installed-app E2E pending |
 | `document.body-text-replacement@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Explicit whole-body clear or generated plain-text replacement in Auto mode; generation is lock-free, apply is bound to the pre-generation content revision and exact main body, mutation uses short scoped locks, rollback proof and one native LIFO Undo | Installed-app replace/delete/Undo and stale-during-generation evidence; rich structure, arbitrary-range generation and track-revisions output remain absent |
+| `document.selection-text@1.0` | partial, bounded read support | production source enabled; installed-app E2E pending | Fixed-argument `GetSelectedText` RPC for a maximum 4096-code-unit single-line selection used only by the current request; no Host-context or durable-memory projection | Current installed-app selection capture/generation evidence; multi-paragraph and richer selection serialization remain out of scope |
+| `document.text-replacement@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Natural-language selection, exact-unique and explicit exact-all replacement/deletion in Auto mode; main-body-only inspect, exact quote/policy verification, bounded match set, short scoped lock, sanitized receipt and one native LIFO Undo | Current installed-app selection/unique/all/delete/fail/cancel/Undo evidence; multi-paragraph selection, rich text, non-body stories and Track Revisions remain unsupported |
 | Other Word mutations such as paragraph structure, list creation, table structure, comment resolution, and revisions | absent | blocked | Existing editor internals only; no enabled Auralith capability contract | Full SDKJS-first capability lifecycle |
 | Spreadsheet document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Spreadsheet context, semantic read contract, selection/range identity, calculation/revision rules, and safe mutations |
 | Presentation document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Slide/object context, semantic read contract, selection identity, transaction and Undo rules |
@@ -95,20 +98,25 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Diagram document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Page/node context, semantic graph contract, selection identity, and mutation semantics |
 | Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; Button/Checkbox contracts and Host-mode keyboard safety are now enforced | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
-| macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; Auto formatting plus native Undo observed, remaining GUI E2E pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260806-214730` | Complete the installed-app Comment/fail/cancel/conflict and remaining-capability GUI matrix, then public release certification |
-| Cross-submodule verification | native, repository-gate scope | fast/full verified at exact pushed gitlinks | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Hosted CI and artifact publication |
+| macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; current GUI retest blocked by macOS lock | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260810-141832` | Unlock and complete the current installed-app selection/exact replacement, Comment, fail/cancel/conflict and Undo matrix, then public release certification |
+| Cross-submodule verification | native, repository-gate scope | current `fast --network` and component suites verified; current root `full` not rerun | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Rerun `full --network`, then add hosted CI and artifact publication |
 
 ### Production Word selection-write boundary
 
 The source production gate, dedicated receipt transport, Harness descriptors,
 runtime authorizer, Host mode/executor and Reader command paths are now
-connected for exactly six capabilities: text formatting, paragraph formatting,
+connected for exactly seven write capabilities: text formatting, paragraph formatting,
 existing-list level, selection comment add, strict table-cell plain-text
-replacement, and revision-bound main-body plain-text replacement. The built-in
-manifest derives these enabled entries from the typed Office registry.
+replacement, revision-bound main-body plain-text replacement, and bounded
+selection/exact-match text replacement. The built-in manifest derives these
+enabled entries from the typed Office registry. A separate read-only
+`document.selection-text@1.0` capability supports generated selection rewrites.
 
-Writes deliberately remain outside the five-method read-only snapshot RPC
-allowlist. The Reader receives only a bounded preview, an opaque one-shot Host
+Writes deliberately remain outside the read-only RPC allowlist. The only new
+read method is `GetSelectedText` with the exact fixed options
+`{Numbering:false, Math:false, TableCellSeparator:"\t", ParaSeparator:"\n"}`.
+Its bounded value is request-local and MUST NOT be placed in Host context or
+durable conversation memory. The Reader receives only a bounded preview, an opaque one-shot Host
 receipt, and a sanitized authoritative outcome. It never receives a selection
 token, exact SDKJS method, raw target identity, remote lock ids, or reusable
 authorization. The host verifies source/origin/channel/context, capability and
@@ -126,7 +134,7 @@ A rejected executor is latched as `TOOL_EXECUTION_UNCERTAIN` with
 is also non-retryable. A handler or UI cannot swallow, relabel, or automatically
 repeat either terminal state.
 
-All five writes use a frozen target and exact precondition, accept only proven
+All seven writes use a frozen target and exact precondition, accept only proven
 disjoint revision rebase, acquire only the final target closure through an
 asynchronous scoped lock, and execute one synchronous mutation/verification
 critical section. Text-formatting resources are resolved and preloaded before
@@ -142,8 +150,30 @@ change feed marks table-level regions, so an edit to a different cell in the
 same table conservatively expires the pending target. This is a safe P0 false
 conflict, not evidence of cell-level concurrent rebasing.
 
-Source integration is not installed-app certification. The observed Auto bold
-write and native Undo are positive-path evidence only. Until the current build
+The strict document-text replacement capability is not a generic search/replace
+or scripting bridge. Its closed input selects either `{kind:"selection",
+expectedText}` or `{kind:"exactMatches", searchText, occurrence, matchCase,
+wholeWord}`. Selection requires a non-empty exact quote of at most 4096 UTF-16
+code units in exactly one main-body paragraph. Exact search is limited to 1024
+code units, 256 matches and 128 affected main-body paragraphs; replacement is
+single-line Unicode of at most 4096 code units and may be empty only to express
+deletion. `unique` fails for zero or multiple matches and MUST NOT silently
+widen to `all`; `all` is available only when the user explicitly requests all
+matches or an equivalent whole-document match scope. Headers, footers, notes, comments, drawings and other document stories
+are excluded, and Track Revisions MUST be off.
+
+Natural-language routing preserves an explicit whole-body branch through
+`document.body-text-replacement@1.0` before applying the narrower selection or
+exact-match grammar. Model generation runs without a document lock. Inspect
+then verifies the quote/match policy and mints an opaque one-shot target token;
+apply revalidates it after a short scoped lock and returns a sanitized Host
+receipt. A proven disjoint revision move MAY complete with
+`targetResolution:"rebased"` and remains a success; intersection, ambiguity or
+unproven drift fails closed. One successful intent creates one native LIFO Undo
+point and no Agent-only rollback stack.
+
+Source integration is not installed-app certification. The historically
+observed Auto bold write and native Undo are positive-path evidence only. Until the current build
 has exercised the complete inspect -> select-mode -> authorize ->
 apply/fail/cancel -> native Undo matrix in the installed test app, the
 capability remains `partial` and release verification pending. No code may fall
@@ -152,35 +182,34 @@ method.
 
 ### Verification snapshot
 
-The 2026-08-04 counts and installation hash predate the five-capability
+The 2026-08-04 counts and installation hash predate the current seven-write
 production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
-The current source branch was verified with Node.js 20.19.5 at exact fetchable
-gitlinks `desktop-sdk@a600e8a4`, `web-apps@6efd1d50c`, and
-`sdkjs@05da903a3`. All three TypeScript configurations and Biome over 503
-source files passed. Agent Vitest passed 145 files and 1,645/1,645 tests; Host
-mode/profiles/runtime/executor/transport passed 90/90; Chromium Playwright
-passed 278/278, including production Read/Comment/Auto authorization and an
-Auto whole-body authorize/execute path. Focused SDKJS typed-write/cowork QUnit
-passed body replacement 4/19, paragraph 14/67, comment 21/150, list 13/85,
-table-cell 20/160, and remote cowork 24/262. Full root verification with the
-new root gitlinks and installed-app body-write evidence remain separate gates
-and MUST NOT be inferred from these source results.
+The current source branch was verified at the pushed submodule commits
+`desktop-sdk@48caf211`, `web-apps@fa600a69c`, and `sdkjs@e9b392c12`.
+Desktop full Vitest passed 150 files and 1,714/1,714 tests; Biome passed 514
+files; all three TypeScript configurations and `npx vite build` (3,346 modules)
+passed; Reader Chromium Playwright passed 21/21. Host focused tests passed
+96/96, and the final proven-disjoint `targetResolution:"rebased"` acceptance
+regression passed 4 files/32 tests. SDKJS text replacement passed 16 tests/105 assertions, alongside body
+4/19, paragraph 14/67, comment 21/150, list 13/85, table-cell 20/160 and remote
+cowork 24/262. After the root gitlink commit, `fast --network` passed exact
+fork fetchability, focused Agent 50 files/370 tests, every focused SDKJS page
+and the isolated Vite build. The root `full` verifier was not run this round
+and MUST NOT be inferred from the current component or fast-network results.
 
-The repository now contains guarded macOS and Windows test installers. The
-macOS `--stage-only` and explicit `--install` paths completed for the fixed
-user-local Test.app using isolated Vite and SDKJS builds, payload checks,
-same-volume transactional replacement, rollback, and strict deep signing. The
-recoverable copy is `Auralith_Editer Test.app.rollback/20260806-214730`.
-Read/Comment/Auto mode switching, an immediate Auto-mode bold write on a real
-DOCX selection, and ordinary native Undo restoring the pre-write appearance
-were observed on the preceding install. That interaction also found an English
-comment command with an IME fullwidth `：` falling through to model chat;
-`desktop-sdk@e3c4ca8a01b9` fixes the parser and has been reinstalled. The
-console locked before the repaired Comment path could be re-observed. No
-failure/cancel, conflict, paragraph, list, table, or repaired Comment GUI result
-is claimed here until each is observed on the current installed build.
+The repository contains guarded macOS and Windows test installers. Both macOS
+`--stage-only` and the final explicit `--install` completed for the fixed
+user-local Test.app using the 3,346-module Vite build, Word Closure, payload
+checks, same-volume transactional replacement, rollback, strict deep signature
+and designated-requirement checks. The recoverable copy is
+`Auralith_Editer Test.app.rollback/20260810-141832`. macOS was locked after installation, so the current package did not
+receive a GUI interaction retest. Earlier installed builds have historical
+positive evidence for mode switching, Auto formatting/body replacement and
+ordinary native Undo, but that evidence MUST NOT be presented as proof of the
+current package or of the new selection/unique/all/delete text-replacement
+paths.
 
 ## Target architecture
 
@@ -522,8 +551,9 @@ yet evidence that real formatting writes avoid a snapshot refresh.
 
 ### Non-blocking cowork concurrency model
 
-This model is implemented for the five declared Word selection writes. Reads,
-planning, mode authorization and formatting-resource preload run without a document
+This model is implemented for the seven declared Word writes. Reads, including
+the request-local bounded `document.selection-text` capture, planning, model
+generation, mode authorization and formatting-resource preload run without a document
 interaction lock. Collaborative apply uses the SDKJS asynchronous scoped-lock
 path, revalidates the frozen target after grant, and holds only a short
 synchronous mutation/verification critical section. The separate incoming
@@ -774,7 +804,10 @@ Current source implementation:
 2. existing-list level inspect/apply is connected;
 3. exact-selection native comment add is connected;
 4. the first table operation is connected only for complete plain-text
-   replacement of one simple unmerged cell.
+   replacement of one simple unmerged cell;
+5. explicit whole-body plain-text generation/clear is connected; and
+6. bounded main-body selection, exact-unique and explicit exact-all
+   replacement/deletion is connected through `document.text-replacement@1.0`.
 
 Next semantic increments are paragraph styles/outline operations, list
 creation/conversion/renumbering, durable cell-level change identity followed by

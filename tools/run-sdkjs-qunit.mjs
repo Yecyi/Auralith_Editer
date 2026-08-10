@@ -18,6 +18,12 @@ const defaultPages = [
   "word/plugins/pluginsApi.html",
   "word/plugins/multimodalSnapshot.html",
   "word/plugins/remoteCollaborativeApply.html",
+  "word/plugins/selectionParagraphFormatting.html",
+  "word/plugins/selectionListFormatting.html",
+  "word/plugins/selectionComment.html",
+  "word/plugins/selectionTableCellText.html",
+  "word/plugins/documentBodyText.html",
+  "word/plugins/documentTextReplacement.html",
 ];
 const requestedPages = process.argv.slice(2);
 const pages = requestedPages.length > 0 ? requestedPages : defaultPages;

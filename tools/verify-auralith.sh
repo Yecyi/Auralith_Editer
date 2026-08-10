@@ -200,7 +200,9 @@ for file in \
     sdkjs/word/Editor/document/selection-comment.js \
     sdkjs/word/Editor/document/selection-list-formatting.js \
     sdkjs/word/Editor/document/selection-table-cell-text.js \
+    sdkjs/word/Editor/document/document-text-replacement.js \
     sdkjs/word/api_plugins.js \
+    sdkjs/tests/word/plugins/documentTextReplacement.js \
     sdkjs/tests/word/plugins/remoteCollaborativeApply.js; do
     node --check "$file"
 done
@@ -236,12 +238,18 @@ if [[ "$mode" == "fast" ]]; then
             src/office-tools/selection-list-formatting.test.ts \
             src/office-tools/selection-table-cell-text.test.ts \
             src/office-tools/document-body-text.test.ts \
+            src/office-tools/document-text-replacement.test.ts \
             src/document-reader/integration/builtin-document-rpc.test.ts \
             src/document-reader/integration/document-agent-mode.test.ts \
+            src/document-reader/integration/document-bridge.test.ts \
             src/document-reader/integration/document-body-text-agent.test.ts \
             src/document-reader/integration/document-body-text-command.test.ts \
             src/document-reader/integration/document-body-write-intent.test.ts \
+            src/document-reader/integration/document-text-replacement-agent.test.ts \
+            src/document-reader/integration/document-text-replacement-command.test.ts \
+            src/document-reader/integration/document-text-replacement-generation.test.ts \
             src/document-reader/integration/immediate-selection-write-intent.test.ts \
+            src/document-reader/integration/natural-language-document-edit-intent.test.ts \
             src/document-reader/integration/selection-formatting-agent.test.ts \
             src/document-reader/integration/selection-formatting-command.test.ts \
             src/document-reader/integration/selection-paragraph-formatting-agent.test.ts \
@@ -263,6 +271,7 @@ if [[ "$mode" == "fast" ]]; then
             src/document-reader/ui/ReaderTableCellTextAction.test.tsx \
             src/document-reader/ui/ReaderTableCellTextControl.test.tsx \
             src/document-reader/ui/ReaderSelectionActionCloseButton.test.tsx \
+            src/document-reader/ui/ReaderConversationThread.test.tsx \
             src/document-reader/ui/ReaderSelectionWriteActions.test.tsx \
             src/document-reader/ui/ReaderSidebar.test.tsx \
             src/document-reader/ui/useReaderSelectionActionPanel.test.ts \
@@ -277,6 +286,7 @@ if [[ "$mode" == "fast" ]]; then
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionListFormatting.html
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionTableCellText.html
     node tools/run-sdkjs-qunit.mjs word/plugins/documentBodyText.html
+    node tools/run-sdkjs-qunit.mjs word/plugins/documentTextReplacement.html
     node tools/run-sdkjs-qunit.mjs word/plugins/remoteCollaborativeApply.html
 else
     step "Full Agent source and unit checks"

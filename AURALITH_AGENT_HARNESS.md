@@ -138,9 +138,9 @@ V1 仅允许 `all-or-nothing`。任一 target 无法解析、权限/保护/锁�
 
 B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区分 content / structure / location / presentation 指纹，同时保留总 `blocks` change set 兼容旧消费者。它不会放松增量读取门槛；只有连续、本地、单段落的纯文字 delta 走增量路径，未知、混合、非本地、revision gap、overflow、fullRescan 或 layout pending 仍完整刷新。由于当前 DOCX 快照尚未输出 run-level font/color/size，此能力不应被描述为“真实格式修改已经零索引成本”。
 
-### 六个已接通的 Word 写能力
+### 七个已接通的 Word 写能力
 
-源码中的 production capability registry 已启用下列六个能力。它们都经过专用的 SDKJS 方法、有界 schema、Host write profile/executor、不透明一次性 receipt transport、Harness descriptor/runtime authorizer 和 Reader 端模式门禁；写入不进入五方法的只读快照 RPC allowlist，也不向 iframe 暴露 selection token、revision、SDKJS 方法名或原始文档定位。
+源码中的 production capability registry 已启用下列七个写能力。它们都经过专用的 SDKJS 方法、有界 schema、Host write profile/executor、不透明一次性 receipt transport、Harness descriptor/runtime authorizer 和 Reader 端模式门禁；写入不进入只读 RPC allowlist，也不向 iframe 暴露 selection token、revision、SDKJS 方法名或原始文档定位。
 
 | Capability | 当前严格范围 | SDKJS operations |
 | --- | --- | --- |
@@ -150,6 +150,13 @@ B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区�
 | `document.comment@1.0` | 在主文档的精确非空选区上添加具有 Host 端 Auralith 身份的原生批注；authorization 绑定精确 quote | `GetSelectionCommentTarget` / `AddSelectionComment` |
 | `document.selection-table-cell-text@1.0` | **只支持单一 simple unmerged cell 的全部纯文本替换**：单段落、单普通 run、无字段/超链接/数学/图形/批注/嵌套表格/SDT，新文本最多 4096 UTF-16 code units，不含换行和控制字符 | `GetSelectionTableCellTextTarget` / `ReplaceSelectionTableCellText` |
 | `document.body-text-replacement@1.0` | **只支持主文档整篇正文的纯文本清空/替换**：必须是明确整篇命令，生成前绑定 content revision，新正文最多 131072 UTF-16 code units，旧正文最多 1 MiB/2048 个顶层块 | `GetDocumentBodyTextTarget` / `ReplaceDocumentBodyText` |
+| `document.text-replacement@1.0` | **只支持主正文内的精确目标**：当前非空单段落选区，或大小写/whole-word 策略明确的唯一/全部 exact matches；空 replacement 表示删除 | `GetDocumentTextReplacementTarget` / `ReplaceDocumentText` |
+
+生成式选区改写另使用只读内置能力 `document.selection-text@1.0`。它只允许调用
+`GetSelectedText`，且参数固定为
+`{Numbering:false, Math:false, TableCellSeparator:"\t", ParaSeparator:"\n"}`；返回值在
+Reader 边界再次限制为最多 4096 UTF-16 code units、单行且无控制字符。选中文字仅用于
+当前请求的目标校验和生成，不进入 Host document context，也不持久化为会话 memory。
 
 ### 与生俱来的聊天写入路由
 
@@ -162,15 +169,23 @@ Host receipt 写链路；它不要求配置模型，也不弹出逐操作确认�
 - 已存在列表的 1..9 级层级；
 - 带有明确批注正文的选区批注；
 - 带有明确新文本的当前简单单元格完整替换；
+- 对当前选中文字进行明确的替换、改写、翻译、润色或删除；
+- 把一个明确 literal 的唯一匹配替换/删除，或在用户明确说“所有/全部/all/every”或给出等价全文匹配范围时处理全部匹配；
 - 明确指向整篇正文的清空，或“删除/替换整篇正文并生成……”命令。
 
 带正文 payload 的批注与单元格命令统一接受 ASCII `:` 和桌面输入法可能保留的全角 `：`；两种分隔符进入相同的长度、控制字符、模式和单一意图校验，不会扩大可写范围。
 
-`read` 不会路由任何写入，`comment` 只路由批注，`auto` 才路由全部六类。
-除明确的整篇正文生成式替换外，问句、多操作句、自由改写/生成请求、越界参数、
-多行输入或不唯一匹配一律不触发写入，而是留在普通问答路径。这个保守边界是
-为了在用户持续编辑时不写错目标；“删除这一段”或“改写选中内容”不会被提升为
-整篇删除。
+`read` 不会路由任何写入，`comment` 只路由批注，`auto` 才路由全部七类。
+整篇正文语法先于窄范围语法解析，因此“清空整篇正文”仍进入
+`document.body-text-replacement`，不会退化成局部 exact-match 删除。未显式声明
+“所有/全部/all/every”或等价全文匹配范围的 exact literal 默认为 `unique`：零匹配返回 `NO_MATCH`，多于
+一个匹配返回 `AMBIGUOUS_TARGET`，绝不静默扩大为 `all`。空 replacement 是显式删除，
+不是独立的绕过写接口。
+
+问句、多操作句、没有选区的选区命令、缺失/含糊 target、越界参数、多行输入和无法
+闭集解析的自由请求仍不触发写入，而是要求澄清或留在普通问答路径。自然语言只决定
+已注册 capability 的 target kind、occurrence 和 replacement；模型只能生成最终替换
+文本，不能选择 SDKJS 方法、位置、receipt、模式或锁。
 
 整篇替换采用两阶段 no-pause 协议：提交时记录 `baseContentRevision`，模型生成与
 检索期间不持有编辑锁；生成结束后 Host/SDKJS 重新检查同一文档、正文 revision、
@@ -179,10 +194,18 @@ history point。人类在生成期间的任何正文修改都会得到 `STALE`�
 静默覆盖。模型只负责生成最终正文；权限、目标、事务、回滚证明和 receipt 均由
 闭集 Host/SDKJS 控制面决定。
 
-任意 LLM 改写不能在数秒规划后直接使用届时的实时选区。下一阶段必须先在
-用户提交时由 Host 签发不透明 `selection lease`，绑定文档、位置、quote、revision
-和当时模式；模型只能返回闭集 op，应用前再 rebase/冲突判定。在该 lease
-完成前，不会伪装已支持自由生成式写入。
+生成式选区改写在提交时通过 `document.selection-text` 捕获非空 exact quote；模型
+生成期间不持锁。生成结束后，`document.text-replacement` inspect 必须再次证明当前
+目标仍是完全相同的 quote、位于主正文的单一段落、没有 drawing，且 Track Revisions
+关闭。inspect 签发的 token/Host receipt 再绑定 document、region、revision、模式和
+规范化 replacement；任一相交漂移、选区移动或 quote 变化都会在 mutation 前失败，
+不会改写“最像”的另一段文字。
+
+该能力的硬边界为：`expectedText` 与 `replacementText` 各最多 4096 UTF-16 code units，
+`searchText` 最多 1024；exact-match 最多 256 处、最多影响 128 个主正文段落。文本必须
+是合法、无控制字符的单行 Unicode；header/footer、批注正文、脚注/尾注、文本框和其他
+非主正文故事均不在目标集合。Track Revisions 开启时 fail-closed；当前版本不伪装成
+带修订标记的替换。
 
 每个选区写任务都使用不可变的 Host-owned normalized view 和一次性 receipt。
 在 `comment/auto` 模式中该 view 进入审计与结果呈现，而不会弹出逐操作确认卡。
@@ -202,11 +225,11 @@ locks；锁回调后再复核一次，然后在不包含网络等待的同步 mu
 revision gap、unknown、overflow、full-rescan 或模糊定位会在 mutation 前
 fail-closed。
 
-当前表格变更源尚只能保守地标记 table-level region。因此，人类修改同一表格的其他单元格时，待写 token 也会被当作冲突；它会安全地返回 stale/conflict，不会暂停用户或写错单元格。在变更流增加持久 cell identity 之前，不得放宽这个保守边界。
+当前表格变更源尚只能保守地标记 table-level region。因此，人类修改同一表格的其他单元格时，待写 token 也会被当作冲突；它会安全地返回 stale/conflict，不会暂停用户或写错单元格。在变更流增加持久 cell identity 之前，不得放宽这个保守边界。文本替换同样只在 inspect 后申请最终段落集合的短 scoped lock；生成、搜索意图解析和只读选区捕获都不暂停用户。Host outcome 只返回 `changed`、`targetResolution`、`targetKind`、`occurrence` 与有界计数，不泄露选中文字或 selection token；成功写入只有一个 Host receipt 和一个原生 LIFO Undo 点。
 
 SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资源/世代/owner 保护；那条 incoming replay 路径与 Agent 发出的 scoped-lock 写入不是同一个事务。
 
-上述 production 源码路径已接通。安装版真实窗口已经观察到三模式切换、Auto 模式的确定性加粗写入，以及普通原生 Undo 恢复写入前状态；这只证明该正向链路，不代表全部能力已完成安装版认证。整篇替换的源码测试与构建已通过，但在本节写入时安装版 GUI E2E 仍待执行。Comment 写入、失败/取消、冲突以及其余写能力仍须在当前安装构建中逐项执行 `inspect → select-mode → authorize → apply/fail/cancel → Undo` GUI E2E。
+上述 production 源码路径已接通。较早安装版真实窗口曾观察到三模式切换、Auto 模式的确定性加粗/整篇正文写入和普通原生 Undo；这些只是历史正向证据，不能证明 2026-08-10 当前安装包。当前包因 macOS 锁屏未完成 GUI 复测，尤其不能把新 selection/unique/all/delete 路由或 text-replacement 的 apply/fail/cancel/Undo 写成已由真实窗口证实。
 
 ## 新增文件格式的实施契约
 
@@ -219,15 +242,29 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 
 ## 测试边界
 
-2026-08-09 当前源码结果：Node.js 20.19.5；三套 TypeScript 通过；Biome 503 个源码文件通过；Agent Vitest 145 个文件、1,645/1,645；Host mode/write profiles/runtime/executor/transport 90/90；Chromium Playwright 278/278，其中生产三模式用例同时覆盖 Auto 整篇正文 authorize/execute。SDKJS 新增整篇正文 QUnit 4/19，并继续通过 paragraph 14/67、comment 21/150、list 13/85、table-cell 20/160、remote cowork 24/262。精确可获取 gitlink 为 `desktop-sdk@a600e8a4`、`web-apps@6efd1d50c`、`sdkjs@05da903a3`；完整根验证器与新安装版窗口证据在根 gitlink 提交后执行，未执行部分不得提前标记通过。
+2026-08-10 当前源码结果基于已推送子模块 `desktop-sdk@48caf211`、
+`web-apps@fa600a69c`、`sdkjs@e9b392c12`：desktop 全量 Vitest 150 个文件、
+1,714/1,714 tests，Biome 514 个文件、三套 TypeScript 配置与 `npx vite build`
+（3,346 modules）通过，Reader Chromium Playwright 21/21；Host 聚焦测试 96/96，
+最终 `targetResolution: "rebased"` 接受回归 4 files/32 tests 通过。
+SDKJS 新增 text-replacement QUnit 16 tests/105 assertions，并继续通过 paragraph
+14/67、comment 21/150、list 13/85、table-cell 20/160、body 4/19、remote cowork
+24/262。根 gitlink 提交后的 `fast --network` 通过三个 fork 的精确 fetchability、
+focused Agent 50 files/370 tests、全部聚焦 SDKJS pages 与 isolated Vite build。
+本轮没有运行 `full` verifier；该门禁仍不得由上述结果推断为通过。
 
-当前 Test.app 的安装回滚点是 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260806-214730`。安装后的 payload、production entry、bundle shape、深层 ad-hoc 签名和 designated requirement 已验证。前一安装构建已在真实 GUI 中证明三模式切换、Auto 确定性加粗与普通原生 Undo；当前构建另包含英文命令对输入法全角 `：` 的确定性解析修复。Comment 正向链路及剩余失败/取消/冲突矩阵仍须在解锁后的当前安装构建中复测。
+本轮 `--stage-only` 与最终正式 `--install` 均成功；最终安装包通过 3,346-module
+Vite build、Word Closure、payload、production entry、bundle shape、strict deep
+signature 与 designated-requirement 检查。当前回滚点是
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260810-141832`。
+macOS 当时处于锁屏状态，因此没有对当前包执行 GUI 交互复测；旧包的可见成功不能
+替代当前包的 selection/exact replacement、失败/取消/冲突和 Undo 矩阵。
 
-源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、六个 Reader 操作链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
+源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、七个 Reader 写操作链、`document.selection-text` 只读链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
 
 - Harness/Prompt 单元测试覆盖状态机、取消、能力、Evidence、ToolPolicy、格式冲突、降级和提示注入。
 - Model Center 测试覆盖 endpoint 身份轮换、能力隔离、密钥引用迁移和模型目录竞态。
 - DOCX 专用读取管线覆盖快照一致性、视觉缓存隔离、Provider Session 隔离、能力探测和来源引用。
 - Playwright 覆盖“模型中心选择模型 → DOCX 读取”以及五种编辑器宿主。
 - SDKJS QUnit 覆盖轻量 preflight 与完整快照的执行边界。
-- 六个 Word 写契约覆盖严格输入、mixed/结构状态、单次 token、原生位置与 quote/revision 绑定、版本/选区过期、无副作用读取、scoped locks、事务回滚、单个原生 Undo，以及 committed/unknown 结果不重试。
+- 七个 Word 写契约覆盖严格输入、mixed/结构状态、单次 token、原生位置与 quote/revision 绑定、版本/选区过期、无副作用读取、scoped locks、事务回滚、单个原生 Undo，以及 committed/unknown 结果不重试；selection-text 另覆盖固定 RPC 参数、长度/控制字符校验和不持久化边界。

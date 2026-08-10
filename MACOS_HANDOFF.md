@@ -27,9 +27,9 @@ of downloading the upstream `master` tree first.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `af427f2b2382b7f8c0431025d7002205325bf0df` |
-| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `6efd1d50c0e78a873fd4bc9ccbef3120e4c95e8b` |
-| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `05da903a3ed976639bc55cbfa6b2e441de65d493` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `48caf211e6e530e4727a2eb25b63315b2d622d18` |
+| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `fa600a69cabc868efd4e28a3fb502ee89a82bfcc` |
+| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `e9b392c1275eb3ad01560a1c46d725133e2a3eeb` |
 
 Unmodified submodules remain on their official repositories.
 
@@ -37,10 +37,11 @@ Unmodified submodules remain on their official repositories.
 
 - `sdkjs` contains the read-only DOCX multimodal snapshot contract,
   structure/object inventory, asset chunking, stale-version checks and source
-  navigation, plus six bounded Word write semantics: text and paragraph
+  navigation, a bounded request-local selection-text read, plus seven bounded Word write semantics: text and paragraph
   formatting, existing-list level, exact-selection comment add, strict
   single-simple-cell plain-text replacement, and revision-bound main-body
-  plain-text replacement.
+  plain-text replacement, together with bounded selection/exact-match
+  replacement and deletion.
 - `web-apps` contains the built-in editor host, header entry, advanced
   settings integration, restricted snapshot bridge, closed write profiles,
   Host-owned document mode/executor and dedicated opaque-receipt write
@@ -79,7 +80,10 @@ Unmodified submodules remain on their official repositories.
   `document.selection-paragraph-formatting@1.0`,
   `document.selection-list-formatting@1.0`, `document.comment@1.0`, and
   `document.selection-table-cell-text@1.0`, plus
-  `document.body-text-replacement@1.0`. The Host owns one per-document
+  `document.body-text-replacement@1.0` and `document.text-replacement@1.0`.
+  The read-only `document.selection-text@1.0` capability captures a bounded
+  exact quote for generated selection edits through fixed `GetSelectedText`
+  arguments; it is not projected into Host context or durable memory. The Host owns one per-document
   `read/comment/auto` mode: `read` denies writes, `comment` permits only native
   comments, and `auto` permits all registered bounded writes. `comment/auto`
   skip repetitive per-operation confirmation, while every write still uses an
@@ -97,6 +101,19 @@ Unmodified submodules remain on their official repositories.
   mutation replaces only the main body with bounded plain text in one native
   LIFO Undo point. Headers, footers and document settings stay outside the
   target; rich formatting and arbitrary-range generation are not claimed.
+- Document-text replacement P0 is also `auto`-only, but remains distinct from
+  the whole-body path. Natural language can target the current selected text,
+  one unique exact literal, or every exact literal only when the user explicitly
+  asks for all/an equivalent whole-document match scope; an empty replacement deletes the resolved target. Selection is
+  limited to one non-empty main-body paragraph and an exact expected quote.
+  Search/replacement/selection bounds are 1024/4096/4096 UTF-16 code units,
+  with at most 256 matches across 128 main-body paragraphs. Track Revisions
+  must be off. Headers, footers and other stories are not searched or mutated.
+  Generation and intent parsing remain lock-free; inspect and apply revalidate
+  the target, the final mutation holds only short target-scoped locks, and a
+  proven disjoint revision move may return `targetResolution: "rebased"` as a
+  successful Host receipt. Intersecting or ambiguous drift fails closed, and
+  one successful intent produces one native LIFO Undo point.
 
 The current Windows test build can exercise the editor-level Agent. A fully
 native start-page/title-bar integration still requires rebuilding the Qt
@@ -153,6 +170,34 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
+The 2026-08-10 document-text replacement checkpoint uses the pushed submodule
+commits `desktop-sdk@48caf211`, `web-apps@fa600a69c`, and
+`sdkjs@e9b392c12`:
+
+- desktop full Vitest passed 150 files and 1,714/1,714 tests; all three
+  TypeScript configurations, Biome over 514 files, and `npx vite build`
+  (3,346 modules) passed;
+- Reader Chromium Playwright passed 21/21 and Host focused
+  profile/executor/transport/runtime tests passed 96/96; the final
+  `targetResolution: "rebased"` acceptance regression passed 4 files/32 tests;
+- the new SDKJS document-text replacement suite passed 16 tests/105
+  assertions; the focused matrix also passed paragraph 14/67, comment 21/150,
+  list 13/85, table-cell 20/160, body 4/19 and remote cowork 24/262;
+- root `fast --network` passed exact fork fetchability, focused Agent 50
+  files/370 tests, all focused SDKJS pages and the isolated Vite build;
+- both `--stage-only` and the final formal `--install` completed; the final
+  package passed the 3,346-module Vite build, Word Closure compile, payload,
+  strict deep signature and designated-requirement checks. The recoverable
+  pre-swap copy is `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260810-141832`.
+
+This round did **not** run the root `full` verifier. The post-gitlink
+`fast --network` gate passed; run the remaining full gate separately. macOS was
+locked after installation, so the current app was **not** GUI-retested. Do not
+report the new natural-language selection/unique/all/delete routes, Host
+receipt, fail/cancel behavior or native Undo as installed-window evidence until
+they are observed on this exact package. Positive GUI observations below belong
+to older packages and are historical only.
+
 The 2026-08-09 automatic body-write checkpoint was run with Node.js 20.19.5
 against the fetchable gitlinks `desktop-sdk@af427f2b`,
 `web-apps@6efd1d50c`, and `sdkjs@05da903a3`:
@@ -191,8 +236,8 @@ does not claim live external research when no supported search provider is
 configured. The guarded `--install` transaction rebuilt the Agent and desktop
 Word SDK, passed staged and installed deep-signature/designated-requirement
 checks, and atomically replaced the dedicated test app at
-`/Users/openclaw_server/Applications/Auralith_Editer Test.app`. The current
-recoverable pre-swap copy is:
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app`. That
+checkpoint's recoverable pre-swap copy was:
 
 `/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260809-223554`
 
@@ -270,8 +315,8 @@ manifest, signing logs, and the one-line production-index diff. The final
 
 That historical app was deliberately not launched because the macOS console
 remained locked. Its static hash, production entry, bundle metadata and
-signature checks do not certify the current source. The 2026-08-06 checkpoint
-above supersedes its stage/install status; only the observed installed-app GUI
+signature checks do not certify the current source. The 2026-08-10 checkpoint
+above supersedes its stage/install status; current-package installed-app GUI
 E2E remains pending before release readiness can be claimed.
 
 The 2026-07-28 macOS Agent checkpoint completed:
