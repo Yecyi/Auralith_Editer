@@ -251,8 +251,12 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 `web-apps@fa600a69c`、`sdkjs@e9b392c12`：desktop 全量 Vitest 150 个文件、
 1,741/1,741 tests，Biome 514 个文件、Reader TypeScript 与 `npx vite build`
 （3,336 modules）通过；自然语言/Composer 聚焦测试 4 files/112 tests 和更新后的
-Chromium composer 主路径 1/1 通过。根 gitlink、`full --network`、正式安装与当前 GUI
-证据必须在完成后另行记录，不能由这些局部结果推断。
+Chromium composer 主路径 1/1 通过。根 `a6bfacb` 的 `full --network` 继续通过三个
+fork 精确 fetchability、Host contracts、desktop 150 files/1,741 tests、Chromium
+278/278、全部九个 SDKJS pages、isolated Word Closure 与 3,336-module Vite build；
+没有写入 tracked 或 packaged deploy assets。`--stage-only` 也通过 payload、production
+entry、bundle shape、deep signature 与 designated requirement。正式 `--install` 因
+macOS 锁屏且旧 Test.app 正在运行而安全停止，因此当前安装版与 GUI 证据尚未更新。
 
 此前 2026-08-10 checkpoint 的 Reader Chromium Playwright 21/21、Host 聚焦测试 96/96，
 最终 `targetResolution: "rebased"` 接受回归 4 files/32 tests 通过。

@@ -187,9 +187,15 @@ generated rewrites use the full model dispatch gate and every submitted write
 must match its exact available capability. Node.js 20 local verification passed
 desktop Vitest 150 files/1,741 tests, Biome 514 files, Reader TypeScript, a
 3,336-module `npx vite build`, focused natural-language tests 4 files/112 tests,
-and the updated Chromium composer path 1/1. The root gitlink, full
-cross-submodule gate and formal Test.app installation are recorded only after
-those steps complete.
+and the updated Chromium composer path 1/1. Root commit `a6bfacb` pins the
+gitlink, and `full --network` passed exact fork fetchability, Host contracts,
+desktop 150 files/1,741 tests, Chromium 278/278, all nine Auralith SDKJS QUnit
+pages, isolated Word Closure and the 3,336-module Vite build without touching
+tracked/package deploy assets. `--stage-only` then passed package assembly,
+payload, production-entry, deep-signature and designated-requirement checks.
+Formal `--install` was intentionally not run because the old Test.app remained
+open while macOS was locked; the installed bundle and rollback point therefore
+remain the 2026-08-10 versions until the user unlocks and exits the app.
 
 The 2026-08-10 document-text replacement checkpoint used the pushed submodule
 commits `desktop-sdk@27f7b107`, `web-apps@fa600a69c`, and
