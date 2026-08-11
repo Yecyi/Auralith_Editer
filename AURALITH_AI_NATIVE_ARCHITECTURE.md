@@ -1,10 +1,10 @@
 # Auralith AI-native Office architecture
 
 Status: normative architecture and delivery contract
-Implementation status refreshed: 2026-08-10; current component suites,
-root `fast --network` and `full --network`, staged/formal test-app installation
-and signing passed. The current installed GUI was not retested because macOS
-was locked; older GUI evidence is historical only
+Implementation status refreshed: 2026-08-11. The natural-language-only
+composer source and desktop component suites are current; root gitlink,
+cross-submodule and installation evidence must be recorded separately. Older
+installed GUI evidence is historical only
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
 Office capabilities. It covers SDKJS document semantics, editor context,
@@ -96,12 +96,20 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Presentation document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Slide/object context, semantic read contract, selection identity, transaction and Undo rules |
 | PDF document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | PDF reading/form context, capability-specific permissions, and mutation semantics |
 | Diagram document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Page/node context, semantic graph contract, selection identity, and mutation semantics |
-| Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; Button/Checkbox contracts and Host-mode keyboard safety are now enforced | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
+| Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; the production composer exposes only natural-language input, model selection and Send while retaining ARIA labels | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
 | macOS isolated test-app installation | partial | current dedicated Test.app installed and statically verified; current GUI retest blocked by macOS lock | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current transaction completed with rollback `20260810-141832` | Unlock and complete the current installed-app selection/exact replacement, Comment, fail/cancel/conflict and Undo matrix, then public release certification |
 | Cross-submodule verification | native, repository-gate scope | current `fast --network` and `full --network` verified | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Add hosted CI and artifact publication |
 
 ### Production Word selection-write boundary
+
+The composer is a natural-language surface, not the source of Office
+authority. It MUST NOT mount a parallel text-format, paragraph-layout, list or
+comment action rail. Deterministic local commands MAY run without a configured
+model only after resolving to exactly one registered capability; generated
+edits MUST satisfy the complete reader/model/document/consent/session dispatch
+gate. A model or UI affordance MUST NOT widen target scope, mode grants, locks,
+receipts or SDKJS operations.
 
 The source production gate, dedicated receipt transport, Harness descriptors,
 runtime authorizer, Host mode/executor and Reader command paths are now
@@ -186,11 +194,16 @@ The 2026-08-04 counts and installation hash predate the current seven-write
 production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
-The current source branch was verified at the pushed submodule commits
-`desktop-sdk@27f7b107`, `web-apps@fa600a69c`, and `sdkjs@e9b392c12`.
-Desktop full Vitest passed 150 files and 1,714/1,714 tests; Biome passed 514
-files; all three TypeScript configurations and `npx vite build` (3,346 modules)
-passed; Reader Chromium Playwright passed 21/21. Host focused tests passed
+The current source branch pins the pushed submodule commits
+`desktop-sdk@f010aa45`, `web-apps@fa600a69c`, and `sdkjs@e9b392c12`.
+Before the root-gitlink gate, desktop full Vitest passed 150 files and
+1,741/1,741 tests; Biome passed 514 files; Reader TypeScript and `npx vite
+build` (3,336 modules) passed. Focused natural-language/composer tests passed 4
+files/112 tests and the updated Chromium composer path passed 1/1. These local
+results do not substitute for the root `full --network` or installed GUI
+evidence.
+
+At the prior 2026-08-10 checkpoint, Reader Chromium Playwright passed 21/21. Host focused tests passed
 96/96, and the final proven-disjoint `targetResolution:"rebased"` acceptance
 regression passed 4 files/32 tests. SDKJS text replacement passed 16 tests/105 assertions, alongside body
 4/19, paragraph 14/67, comment 21/150, list 13/85, table-cell 20/160 and remote

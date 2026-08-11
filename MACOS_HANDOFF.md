@@ -27,7 +27,7 @@ of downloading the upstream `master` tree first.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `27f7b10745baeefe4f0e16b6b9d9e0b197f7e938` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `f010aa4551b1f23e4fe5127fd3bd03a9a7dfe879` |
 | `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `fa600a69cabc868efd4e28a3fb502ee89a82bfcc` |
 | `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `e9b392c1275eb3ad01560a1c46d725133e2a3eeb` |
 
@@ -60,6 +60,11 @@ Unmodified submodules remain on their official repositories.
   streaming remains an ephemeral, explicitly unverified plane; a completed
   answer becomes visible only after citation validation and durable
   checkpointing.
+- The production composer now exposes only the natural-language textarea,
+  document-scoped model selector and Send button. The former text-format,
+  paragraph-layout, list and comment button rail is no longer mounted. Closed
+  deterministic writes remain usable without a model; generated edits require
+  the complete model/document/consent/session dispatch gate.
 - Model discovery enriches only live API-returned model IDs with validated
   models.dev metadata. Custom OpenAI-compatible endpoints remain probe-gated,
   configured routes are never overwritten, and Provider secrets do not enter
@@ -170,7 +175,23 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
-The 2026-08-10 document-text replacement checkpoint uses the pushed submodule
+The 2026-08-11 natural-language composer checkpoint uses the pushed submodule
+commits `desktop-sdk@f010aa45`, `web-apps@fa600a69c`, and
+`sdkjs@e9b392c12`. The manual text-format/paragraph/list/comment action rail is
+removed from the production component tree. Common Chinese and English
+formatting, layout, list, comment, table-cell, selection/exact-match and
+whole-body commands continue through the closed Host capabilities; automatic
+text color and conversational selection/paragraph aliases are included.
+Deterministic local writes no longer depend on model configuration, while
+generated rewrites use the full model dispatch gate and every submitted write
+must match its exact available capability. Node.js 20 local verification passed
+desktop Vitest 150 files/1,741 tests, Biome 514 files, Reader TypeScript, a
+3,336-module `npx vite build`, focused natural-language tests 4 files/112 tests,
+and the updated Chromium composer path 1/1. The root gitlink, full
+cross-submodule gate and formal Test.app installation are recorded only after
+those steps complete.
+
+The 2026-08-10 document-text replacement checkpoint used the pushed submodule
 commits `desktop-sdk@27f7b107`, `web-apps@fa600a69c`, and
 `sdkjs@e9b392c12`:
 

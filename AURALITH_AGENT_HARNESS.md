@@ -160,11 +160,13 @@ Reader 边界再次限制为最多 4096 UTF-16 code units、单行且无控制�
 
 ### 与生俱来的聊天写入路由
 
-Reader 聊天输入现在包含一个无模型、闭集、确定性的命令路由器。
-当完整消息只匹配一个零歧义命令时，提交事件会立即调用上表已注册的
-Host receipt 写链路；它不要求配置模型，也不弹出逐操作确认。当前支持中英文的：
+Reader 的 production composer 现在只保留自然语言文本框、当前文档的模型选择器与
+发送按钮，不再挂载文字格式、段落布局、列表或批注的手动按钮/弹层。按钮消失不会
+删除底层能力：聊天输入包含一个无模型、闭集、确定性的命令路由器。当完整消息只匹配
+一个零歧义命令时，提交事件会立即调用上表已注册的 Host receipt 写链路；它不要求
+配置模型，也不弹出逐操作确认。当前支持中英文的：
 
-- 选区加粗、斜体、下划线、删除线开关，字体、point 字号、`#RRGGBB` 文字色/高亮；
+- 选区加粗、斜体、下划线、删除线开关，字体、point 字号、`#RRGGBB` 文字色/高亮，以及文字颜色恢复为自动；
 - 选中段落的对齐、间距、缩进和行距；
 - 已存在列表的 1..9 级层级；
 - 带有明确批注正文的选区批注；
@@ -182,7 +184,10 @@ Host receipt 写链路；它不要求配置模型，也不弹出逐操作确认�
 一个匹配返回 `AMBIGUOUS_TARGET`，绝不静默扩大为 `all`。空 replacement 是显式删除，
 不是独立的绕过写接口。
 
-问句、多操作句、没有选区的选区命令、缺失/含糊 target、越界参数、多行输入和无法
+确定性本地写入的 input readiness 与模型 readiness 分离，但发送门禁仍按解析出的
+精确 capability 判断；“只有评论能力”不能放行删除，“只有文字格式能力”也不能放行
+段落或正文写入。生成式改写必须同时满足可运行 Reader 状态、manifest、文档 Agent
+session、模型能力和远程证据授权。问句、多操作句、没有选区的选区命令、缺失/含糊 target、越界参数、多行输入和无法
 闭集解析的自由请求仍不触发写入，而是要求澄清或留在普通问答路径。自然语言只决定
 已注册 capability 的 target kind、occurrence 和 replacement；模型只能生成最终替换
 文本，不能选择 SDKJS 方法、位置、receipt、模式或锁。
@@ -229,7 +234,7 @@ fail-closed。
 
 SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资源/世代/owner 保护；那条 incoming replay 路径与 Agent 发出的 scoped-lock 写入不是同一个事务。
 
-上述 production 源码路径已接通。较早安装版真实窗口曾观察到三模式切换、Auto 模式的确定性加粗/整篇正文写入和普通原生 Undo；这些只是历史正向证据，不能证明 2026-08-10 当前安装包。当前包因 macOS 锁屏未完成 GUI 复测，尤其不能把新 selection/unique/all/delete 路由或 text-replacement 的 apply/fail/cancel/Undo 写成已由真实窗口证实。
+上述 production 源码路径已接通。较早安装版真实窗口曾观察到三模式切换、Auto 模式的确定性加粗/整篇正文写入和普通原生 Undo；这些只是历史正向证据，不能证明 2026-08-11 当前源码/安装包。当前 GUI 证据仍需在新安装后复测，尤其不能把 natural-language-only composer、新 selection/unique/all/delete 路由或 text-replacement 的 apply/fail/cancel/Undo 写成已由真实窗口证实。
 
 ## 新增文件格式的实施契约
 
@@ -242,10 +247,14 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 
 ## 测试边界
 
-2026-08-10 当前源码结果基于已推送子模块 `desktop-sdk@27f7b107`、
+2026-08-11 当前源码结果基于已推送子模块 `desktop-sdk@f010aa45`、
 `web-apps@fa600a69c`、`sdkjs@e9b392c12`：desktop 全量 Vitest 150 个文件、
-1,714/1,714 tests，Biome 514 个文件、三套 TypeScript 配置与 `npx vite build`
-（3,346 modules）通过，Reader Chromium Playwright 21/21；Host 聚焦测试 96/96，
+1,741/1,741 tests，Biome 514 个文件、Reader TypeScript 与 `npx vite build`
+（3,336 modules）通过；自然语言/Composer 聚焦测试 4 files/112 tests 和更新后的
+Chromium composer 主路径 1/1 通过。根 gitlink、`full --network`、正式安装与当前 GUI
+证据必须在完成后另行记录，不能由这些局部结果推断。
+
+此前 2026-08-10 checkpoint 的 Reader Chromium Playwright 21/21、Host 聚焦测试 96/96，
 最终 `targetResolution: "rebased"` 接受回归 4 files/32 tests 通过。
 SDKJS 新增 text-replacement QUnit 16 tests/105 assertions，并继续通过 paragraph
 14/67、comment 21/150、list 13/85、table-cell 20/160、body 4/19、remote cowork
