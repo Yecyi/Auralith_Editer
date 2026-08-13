@@ -76,4 +76,5 @@ bash tools/bootstrap-auralith-macos.sh
 ```
 
 脚本会自动下载三个子模块、核对固定提交、配置官方 upstream，并切换到可继续
-开发和推送的本地 `auralith/master` 分支。完整交接见 `MACOS_HANDOFF.md`。
+开发和推送的本地 `codex/ai-native-office-p0` 分支。完整交接见
+`MACOS_HANDOFF.md`。

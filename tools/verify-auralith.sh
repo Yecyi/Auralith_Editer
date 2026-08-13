@@ -3,6 +3,8 @@ set -euo pipefail
 
 workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 agent_root="$workspace_root/desktop-sdk/ChromiumBasedEditors/plugins/ai-agent"
+bootstrap_script="$workspace_root/tools/bootstrap-auralith-macos.sh"
+development_branch="codex/ai-native-office-p0"
 mode="fast"
 verify_network=false
 
@@ -127,6 +129,7 @@ is_yecyi_origin() {
 verify_submodule() {
     local module="$1"
     local gitlink_line gitlink_sha module_head origin_url gitmodules_url
+    local gitmodules_branch bootstrap_branch bootstrap_commit
 
     [[ -d "$workspace_root/$module" ]] || fail "Missing submodule directory: $module"
     git -C "$module" rev-parse --is-inside-work-tree >/dev/null 2>&1 || \
@@ -151,6 +154,31 @@ verify_submodule() {
     is_yecyi_origin "$module" "$gitmodules_url" || \
         fail ".gitmodules does not point $module at the Yecyi fork: $gitmodules_url"
 
+    gitmodules_branch="$(git config -f .gitmodules --get "submodule.$module.branch")" || \
+        fail ".gitmodules has no branch for $module."
+    [[ "$gitmodules_branch" == "$development_branch" ]] || \
+        fail ".gitmodules points $module at stale branch $gitmodules_branch."
+
+    bootstrap_branch="$(
+        sed -n 's/^[[:space:]]*local branch_name="\([^"]*\)"$/\1/p' \
+            "$bootstrap_script"
+    )"
+    [[ "$bootstrap_branch" == "$development_branch" ]] || \
+        fail "Bootstrap uses stale development branch $bootstrap_branch."
+    bootstrap_commit="$(
+        awk -v module="$module" '
+            index($0, "\"" module "\"") {
+                if (getline line) {
+                    gsub(/[[:space:]"\\]/, "", line)
+                    print line
+                    exit
+                }
+            }
+        ' "$bootstrap_script"
+    )"
+    [[ "$bootstrap_commit" == "$gitlink_sha" ]] || \
+        fail "Bootstrap pin for $module ($bootstrap_commit) does not match root gitlink $gitlink_sha."
+
     local origin_witness
     origin_witness="$(
         git -C "$module" for-each-ref \
@@ -167,7 +195,7 @@ verify_submodule() {
         git -C "$probe_dir" fetch --quiet --depth=1 "$origin_url" "$gitlink_sha" || \
             fail "$module gitlink $gitlink_sha is not fetchable from $origin_url."
     fi
-    echo "OK $module gitlink ${gitlink_sha:0:12} origin=$origin_url witness=$origin_witness"
+    echo "OK $module gitlink ${gitlink_sha:0:12} branch=$development_branch origin=$origin_url witness=$origin_witness"
 }
 
 step "Repository and submodule invariants"

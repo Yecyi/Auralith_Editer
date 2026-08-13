@@ -9,7 +9,7 @@ prepare_submodule() {
     local expected_commit="$2"
     local fork_url="$3"
     local upstream_url="$4"
-    local branch_name="auralith/master"
+    local branch_name="codex/ai-native-office-p0"
 
     git submodule sync -- "$module_path"
     git submodule update --init --checkout --depth 1 -- "$module_path"
@@ -66,19 +66,19 @@ prepare_submodule() {
 
 prepare_submodule \
     "desktop-sdk" \
-    "25934801e6693529d4a05366cda5e5f01b68cfc0" \
+    "f010aa4551b1f23e4fe5127fd3bd03a9a7dfe879" \
     "https://github.com/Yecyi/desktop-sdk.git" \
     "https://github.com/ONLYOFFICE/desktop-sdk.git"
 
 prepare_submodule \
     "web-apps" \
-    "8c6ba0daf5f1d1916ceee209379ad013be7054e4" \
+    "fa600a69cabc868efd4e28a3fb502ee89a82bfcc" \
     "https://github.com/Yecyi/web-apps.git" \
     "https://github.com/ONLYOFFICE/web-apps-pro.git"
 
 prepare_submodule \
     "sdkjs" \
-    "8c99623eccb957118952dbd49abc20b06726443f" \
+    "e9b392c1275eb3ad01560a1c46d725133e2a3eeb" \
     "https://github.com/Yecyi/sdkjs.git" \
     "https://github.com/ONLYOFFICE/sdkjs.git"
 

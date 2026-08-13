@@ -4,7 +4,8 @@
 
 Clone only the root repository. The bootstrap script downloads the three
 modified components, verifies their pinned commits, configures both fork and
-official remotes, and leaves each component on a local `auralith/master`
+official remotes, and leaves each component on a local
+`codex/ai-native-office-p0`
 branch. The initial checkout is shallow, so it does not download the large
 upstream histories:
 
@@ -18,9 +19,11 @@ Codex and other repository-aware agents will read `AGENTS.md`, which instructs
 them to run this bootstrap automatically when the submodules are absent or
 out of date.
 
-Each writable fork uses `auralith/master` as its GitHub default branch. This
-ensures a shallow submodule clone downloads the Auralith tree directly instead
-of downloading the upstream `master` tree first.
+The writable forks may still advertise the legacy `auralith/master` branch as
+their remote HEAD. Do not use that as the development target. `.gitmodules`
+and the bootstrap script explicitly fetch the pinned
+`codex/ai-native-office-p0` branch, so a shallow checkout does not depend on
+the forks' default-branch setting.
 
 ## Repository map
 
@@ -132,7 +135,7 @@ Work and commit inside the affected submodule first:
 git -C desktop-sdk status
 git -C desktop-sdk add <paths>
 git -C desktop-sdk commit -m "<message>"
-git -C desktop-sdk push origin auralith/master
+git -C desktop-sdk push origin codex/ai-native-office-p0
 ```
 
 Then record the new submodule commit in the root repository:
@@ -140,7 +143,7 @@ Then record the new submodule commit in the root repository:
 ```bash
 git add desktop-sdk
 git commit -m "Update desktop-sdk for <change>"
-git push origin master
+git push origin codex/ai-native-office-p0
 ```
 
 Use the equivalent commands for `web-apps` and `sdkjs`. Do not push a root
