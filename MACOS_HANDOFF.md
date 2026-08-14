@@ -30,9 +30,9 @@ the forks' default-branch setting.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `f010aa4551b1f23e4fe5127fd3bd03a9a7dfe879` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `1fc59ff61cc3e6dde6d8de9e6cea93951830eba6` |
 | `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `fa600a69cabc868efd4e28a3fb502ee89a82bfcc` |
-| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `e9b392c1275eb3ad01560a1c46d725133e2a3eeb` |
+| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `4ab23fb5ea6d5a10806615959d4dc26b3b4db2b3` |
 
 Unmodified submodules remain on their official repositories.
 
@@ -177,6 +177,28 @@ The verifier requires Node.js 20. Its Vite and Closure outputs, Playwright
 artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
+
+The 2026-08-14 native exact-text-replacement repair checkpoint uses the pushed
+submodule commits `desktop-sdk@1fc59ff6`, `web-apps@fa600a69c`, and
+`sdkjs@4ab23fb5`. A formal install of the preceding package exposed a real
+first-request failure for `Replace all north with northern`: SDKJS returned an
+executable exact-match snapshot with `selectedTextLength: 0`, while the Host's
+closed contract correctly required `searchText.length * matchCount`. The Host
+therefore rejected inspection as `INVALID_RESPONSE` before dispatch, and the
+document was not mutated. The SDK snapshot now reports the aggregate
+caller-supplied literal length for executable and resolved-but-unavailable
+exact targets, while a consumed post-write snapshot remains zero. This does
+not return document text or relax authorization.
+
+The SDKJS replacement suite now passes 17 tests/118 assertions, including
+executable, ambiguous, review-mode unavailable, changed and verified no-op
+snapshots. Its focused Word regression matrix, Host profiles/executor and the
+cross-module contract verifier also pass. The desktop Host Chromium spec now
+passes 45/45 and includes fixed-parameter `GetSelectedText` RPC validation plus
+an Auto `exactMatches/all` inspect -> receipt -> apply path for three matches
+across two paragraphs. A fresh full cross-submodule gate and formal reinstall
+remain required before this repair can be reported as installed-window
+evidence.
 
 The 2026-08-11 natural-language composer checkpoint uses the pushed submodule
 commits `desktop-sdk@f010aa45`, `web-apps@fa600a69c`, and
@@ -428,14 +450,60 @@ before running the required desktop/whitespace-only Word compile. It never
 invokes the Agent deploy-packaging command or writes SDK build output into the
 source submodule.
 
-Before installation, the complete current app is copied to a timestamped
-directory under `~/Applications/Auralith_Editer Test.app.rollback`. The staged
-app must pass source-to-target comparisons, payload SHA-256 verification,
-production `require(['app'])`/no-`app_dev` checks, exact
-write profiles → executor → transport → Host ordering, desktop Word
-bundle-shape checks, bundle
-identity validation, and strict deep ad-hoc signature validation. The final
-replacement uses same-volume renames; if any post-swap check fails, the script
-restores the original app and retains the failed candidate for diagnosis.
+Before installation, the complete current app is copied into a timestamped
+rollback **container** under
+`~/Applications/Auralith_Editer Test.app.rollback`:
+
+```text
+<timestamp>/
+├── Auralith_Editer Test.app/
+└── receipts/
+    ├── before-payload.sha256
+    ├── codesign-verify-before.txt
+    ├── install-payload.sha256
+    ├── codesign-stage.txt
+    ├── installed-payload.sha256
+    └── codesign-verify-after.txt
+```
+
+The `.app` contains only signed bundle content, so it remains a directly
+restorable application that must itself pass
+`codesign --verify --deep --strict` after the container rename. Hash manifests and signing evidence are
+siblings under `receipts/`; they must never be written into the signed bundle
+root. The last two receipts appear only after the installed candidate passes
+post-swap verification. The transaction remains active until the installed
+payload receipts and rollback container are reverified.
+
+The staged app must pass source-to-target comparisons, payload SHA-256
+verification, production `require(['app'])`/no-`app_dev` checks, exact write
+profiles → executor → transport → Host ordering, desktop Word bundle-shape
+checks, bundle identity validation, and strict deep ad-hoc signature
+validation. The final replacement uses same-volume renames; if any post-swap
+check fails, the script restores the original app and retains the failed
+candidate at
+`Auralith_Editer Test.app.rollback/failed-<kind>-<timestamp>/Auralith_Editer Test.app`.
+The failed-candidate wrapper is also kept separate from diagnostic container
+files.
+
+Rollback points through `20260814-140435` use the legacy flat layout: their
+application `Contents/` and receipt files share the timestamp directory. The
+payload and saved verification evidence remain useful, but the extra root
+receipts make those directories fail direct strict code-sign verification with
+`unsealed contents present in the bundle root`. Do not rename a legacy
+timestamp directory directly to `.app`; recover only its `Contents/` into a
+clean `Auralith_Editer Test.app` wrapper and run strict deep-signature and
+bundle-id checks before replacement. New rollback containers do not rewrite or
+depend on these historical points.
+
+Run the focused, non-installing rollback regression harness after installer
+changes:
+
+```bash
+bash tools/test-install-auralith-test-macos.sh
+```
+
+It uses an internal test-only Applications root and minimal ad-hoc-signed
+fixture apps to exercise the real backup and automatic-recovery functions. It
+never overrides `HOME`, nor opens, stops or replaces the installed Test app.
 
 The development launcher is also described in `.claude/launch.json`.

@@ -7,7 +7,8 @@
 #       $HOME/Applications/Auralith_Editer Test.app
 #   * the default mode is a read-only preflight
 #   * all build and signing work happens in a same-volume staging directory
-#   * --install makes a verified timestamped backup before an atomic rename
+#   * --install makes a verified timestamped backup container whose signed
+#     app and diagnostic receipts are siblings before an atomic rename
 #   * a failed post-swap verification restores the original application
 
 set -Eeuo pipefail
@@ -15,9 +16,19 @@ IFS=$'\n\t'
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
-readonly USER_APPLICATIONS="${HOME:?HOME is required}/Applications"
+if [[ "${BASH_SOURCE[0]}" != "$0" \
+    && "${AURALITH_INSTALL_LIBRARY_ONLY:-}" == "1" \
+    && -n "${AURALITH_INSTALL_TEST_USER_APPLICATIONS:-}" ]]; then
+    readonly USER_APPLICATIONS="$(
+        cd "$AURALITH_INSTALL_TEST_USER_APPLICATIONS" && pwd -P
+    )"
+else
+    readonly USER_APPLICATIONS="${HOME:?HOME is required}/Applications"
+fi
 readonly TARGET_APP="$USER_APPLICATIONS/Auralith_Editer Test.app"
 readonly ROLLBACK_ROOT="$USER_APPLICATIONS/Auralith_Editer Test.app.rollback"
+readonly ROLLBACK_APP_NAME="Auralith_Editer Test.app"
+readonly ROLLBACK_RECEIPTS_NAME="receipts"
 readonly EXPECTED_BUNDLE_ID="com.auralith.editer.test"
 
 MODE="dry-run"
@@ -34,8 +45,9 @@ Usage: tools/install-auralith-test-macos.sh [--dry-run|--stage-only|--install]
 
   --dry-run    Read-only preflight (default). Does not build or modify the app.
   --stage-only Build, assemble, sign, and verify a temporary app, then remove it.
-  --install    Build and verify a staged app, make a timestamped rollback copy,
-               and atomically replace the dedicated test app.
+  --install    Build and verify a staged app, make a timestamped rollback
+               container with a directly verifiable app and sibling receipts,
+               then atomically replace the dedicated test app.
 
 The install target is intentionally fixed and cannot be overridden:
   $HOME/Applications/Auralith_Editer Test.app
@@ -96,6 +108,10 @@ assert_fixed_paths() {
         die "Internal target-path invariant failed."
     [[ "$ROLLBACK_ROOT" == "$USER_APPLICATIONS/Auralith_Editer Test.app.rollback" ]] ||
         die "Internal rollback-path invariant failed."
+    [[ "$ROLLBACK_APP_NAME" == "Auralith_Editer Test.app" ]] ||
+        die "Internal rollback-app name invariant failed."
+    [[ "$ROLLBACK_RECEIPTS_NAME" == "receipts" ]] ||
+        die "Internal rollback-receipts name invariant failed."
     [[ ! -L "$TARGET_APP" ]] ||
         die "Refusing to use a symlink as the application target: $TARGET_APP"
     if [[ -e "$ROLLBACK_ROOT" && -L "$ROLLBACK_ROOT" ]]; then
@@ -635,26 +651,101 @@ sign_and_verify_stage() {
     verify_payload_manifest "$app_path" "$payload_manifest"
 }
 
+verify_rollback_container() {
+    local backup_container="$1"
+    local phase="${2:-prepared}"
+    local backup_app="$backup_container/$ROLLBACK_APP_NAME"
+    local receipts="$backup_container/$ROLLBACK_RECEIPTS_NAME"
+    local receipt
+    local actual_bundle_id
+    local -a required_receipts=(
+        before-payload.sha256
+        codesign-verify-before.txt
+        install-payload.sha256
+        codesign-stage.txt
+    )
+
+    [[ ! -L "$backup_container" ]] ||
+        die "Rollback container must not be a symlink: $backup_container"
+    [[ ! -L "$backup_app" ]] ||
+        die "Rollback application must not be a symlink: $backup_app"
+    [[ ! -L "$receipts" ]] ||
+        die "Rollback receipts directory must not be a symlink: $receipts"
+    require_directory "$backup_container"
+    require_directory "$backup_app"
+    require_directory "$receipts"
+    require_file "$backup_app/Contents/Info.plist"
+
+    if [[ "$phase" == "complete" ]]; then
+        required_receipts+=(
+            installed-payload.sha256
+            codesign-verify-after.txt
+        )
+    elif [[ "$phase" != "prepared" ]]; then
+        die "Unknown rollback verification phase: $phase"
+    fi
+
+    for receipt in "${required_receipts[@]}"; do
+        [[ -s "$receipts/$receipt" ]] ||
+            die "Rollback receipt is missing or empty: $receipts/$receipt"
+    done
+
+    actual_bundle_id="$(bundle_identifier "$backup_app")" ||
+        die "Unable to read rollback bundle identifier."
+    [[ "$actual_bundle_id" == "$EXPECTED_BUNDLE_ID" ]] ||
+        die "Rollback bundle id changed unexpectedly: $actual_bundle_id"
+    verify_payload_manifest "$backup_app" "$receipts/before-payload.sha256"
+    codesign --verify --deep --strict --verbose=2 "$backup_app" >/dev/null 2>&1 ||
+        die "Rollback application failed strict deep-signature verification: $backup_app"
+
+    if [[ "$phase" == "complete" ]]; then
+        cmp -s \
+            "$receipts/install-payload.sha256" \
+            "$receipts/installed-payload.sha256" ||
+            die "Installed payload receipt differs from the staged install manifest."
+    fi
+}
+
 prepare_backup() {
     local backup_destination="$1"
     local backup_manifest="$2"
     local backup_log="$3"
-    local backup_staging="$TEMP_ROOT/backup.app"
+    local install_manifest="$4"
+    local stage_log="$5"
+    local backup_container_staging="$TEMP_ROOT/rollback-container"
+    local backup_app_staging="$backup_container_staging/$ROLLBACK_APP_NAME"
+    local receipts_staging="$backup_container_staging/$ROLLBACK_RECEIPTS_NAME"
 
-    log "Creating the verified timestamped rollback copy."
+    log "Creating the verified timestamped rollback container."
+    [[ ! -e "$backup_container_staging" ]] ||
+        die "Temporary rollback container already exists: $backup_container_staging"
+    mkdir "$backup_container_staging"
     generate_payload_manifest "$TARGET_APP" "$backup_manifest"
-    ditto "$TARGET_APP" "$backup_staging"
-    verify_payload_manifest "$backup_staging" "$backup_manifest"
-    codesign --verify --deep --strict --verbose=2 "$backup_staging" \
+    ditto "$TARGET_APP" "$backup_app_staging"
+    verify_payload_manifest "$backup_app_staging" "$backup_manifest"
+    codesign --verify --deep --strict --verbose=2 "$backup_app_staging" \
         >"$backup_log" 2>&1
+
+    mkdir "$receipts_staging"
+    cp "$backup_manifest" "$receipts_staging/before-payload.sha256"
+    cp "$backup_log" "$receipts_staging/codesign-verify-before.txt"
+    cp "$install_manifest" "$receipts_staging/install-payload.sha256"
+    cp "$stage_log" "$receipts_staging/codesign-stage.txt"
+
     mkdir -p "$ROLLBACK_ROOT"
     [[ ! -e "$backup_destination" ]] ||
         die "Rollback destination already exists: $backup_destination"
-    mv "$backup_staging" "$backup_destination"
+    mv "$backup_container_staging" "$backup_destination"
+    codesign --verify --deep --strict --verbose=2 \
+        "$backup_destination/$ROLLBACK_APP_NAME" \
+        >"$backup_destination/$ROLLBACK_RECEIPTS_NAME/codesign-verify-before.txt" \
+        2>&1
+    verify_rollback_container "$backup_destination" prepared
 }
 
 restore_after_failed_swap() {
-    local failed_destination="$1"
+    local failed_container="$1"
+    local failed_app
     warn "Post-install verification failed; restoring the original test app."
     TRANSACTION_ACTIVE=0
     if [[ ! -e "$ORIGINAL_SWAP_APP" ]]; then
@@ -667,14 +758,22 @@ restore_after_failed_swap() {
         return 1
     fi
     if [[ -e "$TARGET_APP" ]]; then
-        if [[ -e "$failed_destination" ]]; then
-            failed_destination="${failed_destination%.app}-$$.app"
+        if [[ -e "$failed_container" ]]; then
+            failed_container="$failed_container-$$"
         fi
-        if ! mv "$TARGET_APP" "$failed_destination"; then
+        if [[ -e "$failed_container" ]] || ! mkdir "$failed_container"; then
+            PRESERVE_TEMP=1
+            warn "Could not allocate a failed-candidate container: $failed_container"
+            return 1
+        fi
+        failed_app="$failed_container/$ROLLBACK_APP_NAME"
+        if ! mv "$TARGET_APP" "$failed_app"; then
+            rmdir "$failed_container" 2>/dev/null || true
             PRESERVE_TEMP=1
             warn "Could not evacuate the failed staged app; the original remains at $ORIGINAL_SWAP_APP"
             return 1
         fi
+        warn "Preserved the failed staged app for diagnosis: $failed_app"
     fi
     if ! mv "$ORIGINAL_SWAP_APP" "$TARGET_APP"; then
         PRESERVE_TEMP=1
@@ -684,10 +783,22 @@ restore_after_failed_swap() {
     return 0
 }
 
+# The focused rollback-layout harness sources the installer to exercise the
+# real backup and recovery functions against a test-only Applications root.
+# Executing the installer never honors this internal-only switch, so the fixed
+# production target cannot be redirected through it.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    [[ "${AURALITH_INSTALL_LIBRARY_ONLY:-}" == "1" ]] || {
+        warn "Refusing to source the installer outside its rollback-layout harness."
+        return 1
+    }
+    return 0
+fi
+
 cleanup() {
     local exit_code=$?
     if (( TRANSACTION_ACTIVE == 1 )); then
-        if ! restore_after_failed_swap "$ROLLBACK_ROOT/failed-transaction-$(date +%Y%m%d-%H%M%S).app"; then
+        if ! restore_after_failed_swap "$ROLLBACK_ROOT/failed-transaction-$(date +%Y%m%d-%H%M%S)"; then
             exit_code=2
         fi
     fi
@@ -717,6 +828,7 @@ run_preflight() {
     require_command ps
     require_command python3
     require_command rm
+    require_command rmdir
     require_command sort
     require_command stat
     assert_fixed_paths
@@ -736,6 +848,7 @@ run_preflight
 
 if [[ "$MODE" == "dry-run" ]]; then
     log "Dry run complete. No build output, backup, or application file was written."
+    log "Install rollback layout: $ROLLBACK_ROOT/<timestamp>/$ROLLBACK_APP_NAME with sibling $ROLLBACK_RECEIPTS_NAME/."
     log "Use --stage-only for a full isolated build/sign verification or --install for the explicit install transaction."
     exit 0
 fi
@@ -747,6 +860,7 @@ readonly AGENT_BUILD="$TEMP_ROOT/agent-build"
 readonly SDKJS_ISOLATED="$TEMP_ROOT/sdkjs"
 readonly PAYLOAD_MANIFEST="$TEMP_ROOT/install-payload.sha256"
 readonly SIGN_LOG="$TEMP_ROOT/codesign-stage.log"
+readonly POST_INSTALL_SIGN_LOG="$TEMP_ROOT/codesign-after.log"
 
 build_inputs "$AGENT_BUILD" "$SDKJS_ISOLATED"
 assemble_staged_app "$STAGED_APP" "$AGENT_BUILD" "$SDKJS_ISOLATED"
@@ -762,19 +876,22 @@ fi
 
 readonly TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 readonly BACKUP_DESTINATION="$ROLLBACK_ROOT/$TIMESTAMP"
+readonly BACKUP_APP="$BACKUP_DESTINATION/$ROLLBACK_APP_NAME"
+readonly BACKUP_RECEIPTS="$BACKUP_DESTINATION/$ROLLBACK_RECEIPTS_NAME"
 readonly BACKUP_MANIFEST="$TEMP_ROOT/before-payload.sha256"
 readonly BACKUP_SIGN_LOG="$TEMP_ROOT/codesign-before.log"
-prepare_backup "$BACKUP_DESTINATION" "$BACKUP_MANIFEST" "$BACKUP_SIGN_LOG"
-cp "$BACKUP_MANIFEST" "$BACKUP_DESTINATION/before-payload.sha256"
-cp "$BACKUP_SIGN_LOG" "$BACKUP_DESTINATION/codesign-verify-before.txt"
-cp "$PAYLOAD_MANIFEST" "$BACKUP_DESTINATION/install-payload.sha256"
-cp "$SIGN_LOG" "$BACKUP_DESTINATION/codesign-stage.txt"
+prepare_backup \
+    "$BACKUP_DESTINATION" \
+    "$BACKUP_MANIFEST" \
+    "$BACKUP_SIGN_LOG" \
+    "$PAYLOAD_MANIFEST" \
+    "$SIGN_LOG"
 
 log "Replacing the dedicated test app with same-volume atomic renames."
 TRANSACTION_ACTIVE=1
 mv "$TARGET_APP" "$ORIGINAL_SWAP_APP"
 if ! mv "$STAGED_APP" "$TARGET_APP"; then
-    restore_after_failed_swap "$ROLLBACK_ROOT/failed-swap-$TIMESTAMP.app" ||
+    restore_after_failed_swap "$ROLLBACK_ROOT/failed-swap-$TIMESTAMP" ||
         die "The staged-app move and automatic rollback both failed; transaction files were preserved."
     die "Unable to move the verified staged app into place."
 fi
@@ -784,13 +901,18 @@ if ! (
     verify_staged_app "$TARGET_APP" "$AGENT_BUILD" "$SDKJS_ISOLATED" &&
     codesign --verify --deep --strict --verbose=2 "$TARGET_APP"
 ); then
-    restore_after_failed_swap "$ROLLBACK_ROOT/failed-install-$TIMESTAMP.app" ||
+    restore_after_failed_swap "$ROLLBACK_ROOT/failed-install-$TIMESTAMP" ||
         die "Post-install verification and automatic rollback both failed; transaction files were preserved."
     die "The installed app failed post-swap verification; the original app was restored."
 fi
-TRANSACTION_ACTIVE=0
-cp "$PAYLOAD_MANIFEST" "$BACKUP_DESTINATION/installed-payload.sha256"
 codesign --verify --deep --strict --verbose=2 "$TARGET_APP" \
-    >"$BACKUP_DESTINATION/codesign-verify-after.txt" 2>&1
+    >"$POST_INSTALL_SIGN_LOG" 2>&1
+verify_payload_manifest "$TARGET_APP" "$PAYLOAD_MANIFEST"
+cp "$PAYLOAD_MANIFEST" "$BACKUP_RECEIPTS/installed-payload.sha256"
+cp "$POST_INSTALL_SIGN_LOG" "$BACKUP_RECEIPTS/codesign-verify-after.txt"
+verify_payload_manifest "$TARGET_APP" "$BACKUP_RECEIPTS/installed-payload.sha256"
+verify_rollback_container "$BACKUP_DESTINATION" complete
+TRANSACTION_ACTIVE=0
 log "Installation complete: $TARGET_APP"
-log "Rollback copy: $BACKUP_DESTINATION"
+log "Rollback application: $BACKUP_APP"
+log "Rollback receipts: $BACKUP_RECEIPTS"
