@@ -178,6 +178,47 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
+The 2026-08-14 Chinese whole-body-clear repair checkpoint uses the pushed
+submodule commits `desktop-sdk@f473911a`, `web-apps@fa600a69c`, and
+`sdkjs@4ab23fb5`. The preceding installed bundle parsed both
+`删除文章中的内容` and `删除文章中所有的内容` as exact text deletion, then safely
+stopped at `NO_MATCH` before Host dispatch. Its recovery DOCX remained
+byte-identical to the source fixture. The closed whole-body grammar now accepts
+only an explicit `文章中`, `文章里`, or `文章的` container followed by optional
+`所有/全部` and `正文/内容`; it also accepts `所有的内容`. Bare phrases such as
+`删除文章内容`, quoted literals, negated/questions, narrower paragraph/table/
+selection targets, and compound commands do not escalate to whole-body clear.
+Composer capability gating has a regression test proving both screenshot
+commands remain deterministic and model-independent when only the body-write
+capability is available.
+
+Node.js 20 verification passes 150 Agent test files with 1,777/1,777 tests,
+Chromium Playwright 278/278, all nine registered Auralith SDKJS QUnit pages,
+isolated Word Closure, and the 3,336-module production Vite build. Formal
+`--install` produced rollback point
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260814-160619`.
+Both the live and nested rollback apps pass strict deep-signature checks; the
+live bundle identifier is `com.auralith.editer.test`, its designated CDHash is
+`a21feaa27d86c9e6ed45084b345f26efb83ce9e3`, and the independent installed
+payload manifest verifies all 320 entries. The installed `reader.js` SHA-256 is
+`1c7c3a7e60002ecbfb9acc1844ca976967ffb86a5a7856173347e40f5648f47e`.
+
+Installed-GUI acceptance used two fresh copies of
+`01-headings-paragraphs.docx`. In Auto mode, `删除文章中所有的内容` and
+`删除文章中的内容` each cleared the visible main body, returned the Host-verified
+native-Undo receipt, and one editor-focused `Cmd+Z` restored both the
+`Quarterly review` heading and revenue paragraph. Both temporary files and the
+repository fixture retained SHA-256
+`176e36cf9d0eb830093fe8ea66df42c2f81b486d5ace81f793afef2629037727`.
+One separate fail-closed policy gap remains: after native Undo, SDKJS keeps the
+native Redo branch and `document.body-text` deliberately returns `BUSY` while
+`History.Can_Redo()` is true. `重新读取` correctly publishes a fresh snapshot,
+but cannot clear that history branch, so a later body write is rejected without
+mutation and the current UI misleadingly presents the generic Host-failure
+copy. This is not stale snapshot binding. Until Redo-preserving cowork policy
+and the `BUSY` presentation are addressed, use a fresh document session after
+Undo before retesting another whole-body write.
+
 The 2026-08-14 native exact-text-replacement repair checkpoint uses the pushed
 submodule commits `desktop-sdk@1fc59ff6`, `web-apps@fa600a69c`, and
 `sdkjs@4ab23fb5`. A formal install of the preceding package exposed a real
