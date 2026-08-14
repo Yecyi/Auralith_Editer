@@ -193,12 +193,24 @@ not return document text or relax authorization.
 The SDKJS replacement suite now passes 17 tests/118 assertions, including
 executable, ambiguous, review-mode unavailable, changed and verified no-op
 snapshots. Its focused Word regression matrix, Host profiles/executor and the
-cross-module contract verifier also pass. The desktop Host Chromium spec now
+cross-module contract verifier also pass. The desktop Host Chromium spec
 passes 45/45 and includes fixed-parameter `GetSelectedText` RPC validation plus
 an Auto `exactMatches/all` inspect -> receipt -> apply path for three matches
-across two paragraphs. A fresh full cross-submodule gate and formal reinstall
-remain required before this repair can be reported as installed-window
-evidence.
+across two paragraphs.
+
+After the gitlinks were committed and pushed, `full --network` passed exact
+fork fetchability, Host contracts, desktop Biome/TypeScript, 150 Agent test
+files with 1,741/1,741 tests, Chromium Playwright 278/278, all nine registered
+Auralith SDKJS QUnit pages, isolated Word Closure and the 3,336-module Vite
+build. Formal `--install` then rebuilt and installed the same source. The live
+App passes strict deep-signature and bundle-id checks; both live and rollback
+payload manifests independently verify 320 entries. The new rollback point is
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260814-143819`,
+containing a directly strict-signature-valid `Auralith_Editer Test.app` and six
+sibling receipts. macOS locked before post-install window testing, so natural
+language replace/delete, the Host receipt and native Undo are **not yet**
+installed-GUI evidence for this package; rerun them on a temporary DOCX after
+unlocking.
 
 The 2026-08-11 natural-language composer checkpoint uses the pushed submodule
 commits `desktop-sdk@f010aa45`, `web-apps@fa600a69c`, and
