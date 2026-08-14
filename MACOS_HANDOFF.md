@@ -30,7 +30,7 @@ the forks' default-branch setting.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `1fc59ff61cc3e6dde6d8de9e6cea93951830eba6` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `f473911aaf521b89a8010f6a5fe0e3e8f0bc852b` |
 | `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `fa600a69cabc868efd4e28a3fb502ee89a82bfcc` |
 | `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `4ab23fb5ea6d5a10806615959d4dc26b3b4db2b3` |
 
