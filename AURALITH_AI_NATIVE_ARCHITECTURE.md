@@ -2,9 +2,11 @@
 
 Status: normative architecture and delivery contract
 Implementation status refreshed: 2026-08-21. The streaming, durable queue,
-request planning, V2 grounding and bounded Word-plan source checkpoint is under
-final cross-submodule and installed-app verification. Older package hashes and
-GUI observations below remain historical until a new formal install is recorded.
+request planning, V2 grounding and bounded Word-plan source checkpoint has
+passed cross-submodule verification and formal test-app installation. Installed
+window interaction verification remains incomplete. Older package hashes and
+GUI observations below remain historical unless explicitly tied to the current
+payload.
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
 Office capabilities. It covers SDKJS document semantics, editor context,
@@ -100,8 +102,8 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Diagram document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Page/node context, semantic graph contract, selection identity, and mutation semantics |
 | Shared Auralith UI system | partial | usable with migration work remaining | Semantic tokens, theme registry, compact sidebar, RTL, reduced-motion and forced-colors foundations; the production composer exposes only natural-language input, model selection and Send while retaining ARIA labels | Complete primitive migration, semantic FormField controls, controller/view separation, localization, and coverage gates |
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
-| macOS isolated test-app installation | partial | 2026-08-11 package passed stage-only; formal swap pending because the old Test.app is running while macOS is locked | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; installed rollback remains `20260810-141832` | Unlock, exit Test.app normally, run formal install, then complete selection/exact replacement, Comment, fail/cancel/conflict and Undo GUI matrix |
-| Cross-submodule verification | native, repository-gate scope | current `fast --network` and `full --network` verified | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Add hosted CI and artifact publication |
+| macOS isolated test-app installation | partial | current 2026-08-21 package formally installed and structurally verified; installed-window E2E pending | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; current rollback is `20260821-030557` | Complete stream/Stop, adaptive research, audit, queue, multi-step apply/fail/cancel and native Undo GUI matrix on this exact payload |
+| Cross-submodule verification | native, repository-gate scope | current full source gate and `fast --network` verified | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Add hosted CI and artifact publication |
 
 ### Reader request, queue and grounding boundary
 
@@ -250,13 +252,20 @@ MUST NOT be copied forward as current results.
 
 The 2026-08-21 source checkpoint pins the pushed submodule commits
 `desktop-sdk@4b107d01`, `web-apps@ae954dc3c`, and `sdkjs@f1946d70c`.
-Before updating the root gitlinks, Node.js 20 verification passed desktop
+Root `4996bae` records those gitlinks and the durable-Agent architecture.
+Node.js 20 full verification passed desktop
 Vitest 164 files/2,004 tests, Chromium Playwright 287/287, all ten registered
 Auralith SDKJS QUnit pages, isolated desktop Word Closure, TypeScript, Biome,
 Host contract/executor/transport tests, and the 3,350-module production Vite
-build. The verifier wrote only temporary artifacts. Formal installation and
-installed-app interaction evidence remain pending at this point in the
-handoff and MUST be recorded separately after the guarded swap.
+build. A following `fast --network` proved exact fork fetchability and repeated
+the focused cross-layer gates. The verifier wrote only temporary artifacts.
+Guarded stage-only and formal installation then passed. The current live test
+app has bundle ID `com.auralith.editer.test`, passes strict deep signature and
+designated-requirement checks, and matches all 320 entries in its installed
+payload manifest. The directly verifiable rollback app and sibling receipts are
+under `Auralith_Editer Test.app.rollback/20260821-030557`. macOS remained locked
+after installation, so installed-window interaction evidence is still pending
+and MUST NOT be inferred from the package or automated gates.
 
 The 2026-08-11 source checkpoint pinned the pushed submodule commits
 `desktop-sdk@f010aa45`, `web-apps@fa600a69c`, and `sdkjs@e9b392c12`.

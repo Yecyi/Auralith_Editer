@@ -198,6 +198,38 @@ artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
 
+The 2026-08-21 durable-Agent checkpoint is rooted at
+`4996bae5665d82e3412ab09938784de92dfdd19c`, with the pushed submodules
+`desktop-sdk@4b107d01f955d5d73c8ac5c4c247eb3454071fc3`,
+`web-apps@ae954dc3ccd9eab01148bb744c13ee64d5933d65`, and
+`sdkjs@f1946d70cdc4a970e7c17207f8613b448d8afe5f`. Node.js 20 full verification
+passed Agent Vitest 164 files/2,004 tests, Chromium Playwright 287/287, all ten
+Auralith SDKJS QUnit pages, isolated desktop Word Closure, TypeScript, Biome,
+Host contracts and the 3,350-module production Vite build. A following
+`fast --network` proved that every exact gitlink is fetchable from its Yecyi
+fork and repeated the focused cross-layer gates. Neither verifier wrote tracked
+or packaged deploy assets.
+
+Both guarded `--stage-only` and the formal `--install` transaction then rebuilt
+and verified the same source. The live application is
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app`; its bundle ID is
+`com.auralith.editer.test`, version is `9.4.0`, strict deep signature and
+designated requirement pass, and its designated CDHash is
+`9054ec1d0afe25b54f75faed21b9e46b19598e69`. The recoverable pre-swap app is
+`/Users/openclaw_server/Applications/Auralith_Editer Test.app.rollback/20260821-030557/Auralith_Editer Test.app`,
+with six sibling receipts; it independently passes strict deep-signature
+verification. The installed and rollback manifests each verify all 320 payload
+entries, and `install-payload.sha256` exactly matches
+`installed-payload.sha256`. Installed production hashes include
+`reader.js@9cbdb38cbb175959d27ef0bf0a6b4cd65884ced8a0c4d8bdcf3a8080763101fd`,
+Word `sdk-all.js@edf0f1a8903aae9c380790542b6b7ff2629ad5692a56c6550d5e9443214b4413`,
+and Host write profiles
+`1196abc02d4d070091a1e8a720d728262b186449a6f7db955222287e4538c300`.
+macOS remained locked after installation, so these facts certify the package,
+not the installed-window stream/Stop, adaptive research, audit, queue,
+multi-step mutation or native Undo flows. Those GUI observations must be added
+only after testing this exact payload on disposable DOCX files.
+
 The 2026-08-14 Chinese whole-body-clear repair checkpoint uses the pushed
 submodule commits `desktop-sdk@f473911a`, `web-apps@fa600a69c`, and
 `sdkjs@4ab23fb5`. The preceding installed bundle parsed both

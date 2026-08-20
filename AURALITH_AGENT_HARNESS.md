@@ -279,8 +279,14 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 文件、2,004/2,004 tests，Chromium Playwright 287/287、全部十个 Auralith
 SDKJS QUnit pages、isolated Word Closure、TypeScript、Biome、Host
 profile/executor/transport tests 与 3,350-module Vite production build 均通过；
-验证器只写入临时目录。此处仅证明已推送源码，正式安装和当前包 GUI 交互证据必须在
-guarded install 后另行记录。
+根 `4996bae` 记录了三个 gitlink，后续 `fast --network` 证明精确 fork
+fetchability 并重复聚焦跨层门禁；验证器只写入临时目录。guarded
+`--stage-only` 与正式 `--install` 随后均通过。当前 live Test.app 与
+`20260821-030557` 嵌套 rollback app 均通过 strict deep signature，live bundle
+ID 为 `com.auralith.editer.test`，installed/rollback manifests 各自验证 320/320
+项。macOS 安装后仍锁屏，因此这些是当前包结构证据，不是 stream/Stop、adaptive
+web、global audit、queue、multi-step apply/fail/cancel 或 native Undo 的窗口证据。
+在可丢弃 DOCX 上完成真实交互前，不得把这些路径写成 installed-GUI verified。
 
 2026-08-11 当前源码结果基于已推送子模块 `desktop-sdk@f010aa45`、
 `web-apps@fa600a69c`、`sdkjs@e9b392c12`：desktop 全量 Vitest 150 个文件、
