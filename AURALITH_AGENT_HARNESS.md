@@ -138,9 +138,9 @@ V1 仅允许 `all-or-nothing`。任一 target 无法解析、权限/保护/锁�
 
 B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区分 content / structure / location / presentation 指纹，同时保留总 `blocks` change set 兼容旧消费者。它不会放松增量读取门槛；只有连续、本地、单段落的纯文字 delta 走增量路径，未知、混合、非本地、revision gap、overflow、fullRescan 或 layout pending 仍完整刷新。由于当前 DOCX 快照尚未输出 run-level font/color/size，此能力不应被描述为“真实格式修改已经零索引成本”。
 
-### 七个已接通的 Word 写能力
+### 七个原子 Word 写能力与一个复合计划能力
 
-源码中的 production capability registry 已启用下列七个写能力。它们都经过专用的 SDKJS 方法、有界 schema、Host write profile/executor、不透明一次性 receipt transport、Harness descriptor/runtime authorizer 和 Reader 端模式门禁；写入不进入只读 RPC allowlist，也不向 iframe 暴露 selection token、revision、SDKJS 方法名或原始文档定位。
+源码中的 production capability registry 已启用下列七个原子写能力。它们都经过专用的 SDKJS 方法、有界 schema、Host write profile/executor、不透明一次性 receipt transport、Harness descriptor/runtime authorizer 和 Reader 端模式门禁；写入不进入只读 RPC allowlist，也不向 iframe 暴露 selection token、revision、SDKJS 方法名或原始文档定位。
 
 | Capability | 当前严格范围 | SDKJS operations |
 | --- | --- | --- |
@@ -151,6 +151,32 @@ B 中安全且独立的部分仅用于读取侧：manifest diff 现在可以区�
 | `document.selection-table-cell-text@1.0` | **只支持单一 simple unmerged cell 的全部纯文本替换**：单段落、单普通 run、无字段/超链接/数学/图形/批注/嵌套表格/SDT，新文本最多 4096 UTF-16 code units，不含换行和控制字符 | `GetSelectionTableCellTextTarget` / `ReplaceSelectionTableCellText` |
 | `document.body-text-replacement@1.0` | **只支持主文档整篇正文的纯文本清空/替换**：必须是明确整篇命令，生成前绑定 content revision，新正文最多 131072 UTF-16 code units，旧正文最多 1 MiB/2048 个顶层块 | `GetDocumentBodyTextTarget` / `ReplaceDocumentBodyText` |
 | `document.text-replacement@1.0` | **只支持主正文内的精确目标**：当前非空单段落选区，或大小写/whole-word 策略明确的唯一/全部 exact matches；空 replacement 表示删除 | `GetDocumentTextReplacementTarget` / `ReplaceDocumentText` |
+
+第八个 production 写能力 `document.word-edit-plan@1.0` 不是 generic
+execute，而是复用上述已经证明过的 mutation kernel。它接受最多 12 个有序、ID
+唯一的闭集操作：选区文字格式、段落格式、已有列表层级、末尾原生批注，以及必须独占
+mutation group 的简单单元格纯文本替换。Host 冻结并验证整个 group；SDKJS 在一个
+outer action 内重新解析目标、一次申请精确 scoped locks、顺序执行并验证全部
+postcondition。任一步失败都精确回滚，不留下部分修改；成功只产生一个原生 History
+point，一次普通 Undo 恢复整组。`read` 模式拒绝计划，`comment` 只允许全部为批注的
+计划，`auto` 才允许已注册的五种 plan operation。整篇正文和 generic exact text
+replacement 仍不在 V1 plan 中；body operation 仅被 schema 识别以强制“必须独占”后
+返回 unsupported，不能伪装为已支持。
+
+显式的即时 cowork 请求在确定性命令无法覆盖时，可以走一次有界模型 proposer。该
+proposer 无工具循环、无重试，deadline 为 8 秒、输出上限 1024 tokens、问题上限
+4096 字符、最多 12 个操作；它只看到问题、Host 模式、目标类别和允许的 text /
+paragraph / list / comment schema，不看到正文、旧助手答案、revision、anchor、
+capability、SDK 方法或私有 token。Host 为操作注入 ID、revision、capability 与一次性
+选区 planning lease 后再进入相同 normalizer/authorizer。模型暂不生成 table-cell
+operation。
+
+planning lease 只用于当前非空真实选区，30 秒过期、每文档最多 16 个，并在 Inspect
+时一次性消费。Reader 只收到 `sl-*` Host 句柄；SDKJS 的 `wlease-*` token、原生选区
+状态、region journal 和 fingerprint 始终留在 Host/SDKJS。目标未变或只发生 SDKJS
+证明的不相交编辑时可继续；相交变化、过期、重复消费、重启和 caret-only 都
+fail-closed。它不是 durable anchor，因此模型计划不能排队、持久化、重启恢复或自动
+重放；“当前段落/列表”没有真实选区时返回 `NO_SELECTION`，不会猜测目标。
 
 生成式选区改写另使用只读内置能力 `document.selection-text@1.0`。它只允许调用
 `GetSelectedText`，且参数固定为
@@ -177,7 +203,8 @@ Reader 的 production composer 现在只保留自然语言文本框、当前文�
 
 带正文 payload 的批注与单元格命令统一接受 ASCII `:` 和桌面输入法可能保留的全角 `：`；两种分隔符进入相同的长度、控制字符、模式和单一意图校验，不会扩大可写范围。
 
-`read` 不会路由任何写入，`comment` 只路由批注，`auto` 才路由全部七类。
+`read` 不会路由任何写入，`comment` 只路由批注或全批注复合计划，`auto` 才路由
+全部已注册原子能力和复合计划。
 整篇正文语法先于窄范围语法解析，因此“清空整篇正文”仍进入
 `document.body-text-replacement`，不会退化成局部 exact-match 删除。未显式声明
 “所有/全部/all/every”或等价全文匹配范围的 exact literal 默认为 `unique`：零匹配返回 `NO_MATCH`，多于
@@ -247,6 +274,14 @@ SDKJS 接收并回放已有协作变更的路径仍有独立的 fail-closed 资�
 
 ## 测试边界
 
+2026-08-21 当前源码基于已推送子模块 `desktop-sdk@4b107d01`、
+`web-apps@ae954dc3c`、`sdkjs@f1946d70c`。Node.js 20 全量 Vitest 164 个
+文件、2,004/2,004 tests，Chromium Playwright 287/287、全部十个 Auralith
+SDKJS QUnit pages、isolated Word Closure、TypeScript、Biome、Host
+profile/executor/transport tests 与 3,350-module Vite production build 均通过；
+验证器只写入临时目录。此处仅证明已推送源码，正式安装和当前包 GUI 交互证据必须在
+guarded install 后另行记录。
+
 2026-08-11 当前源码结果基于已推送子模块 `desktop-sdk@f010aa45`、
 `web-apps@fa600a69c`、`sdkjs@e9b392c12`：desktop 全量 Vitest 150 个文件、
 1,741/1,741 tests，Biome 514 个文件、Reader TypeScript 与 `npx vite build`
@@ -278,11 +313,11 @@ macOS 当时处于锁屏状态，因此没有对当前包执行 GUI 交互复测
 最终 `desktop-sdk@27f7b107` 仅补浏览器 E2E fixture，不改变已安装的 production
 payload，因此无需为该测试提交再次替换 Test.app。
 
-源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、七个 Reader 写操作链、`document.selection-text` 只读链和 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
+源码层面已存在专用 receipt transport、production Harness 注册、runtime authorizer、Host mode/executor、七个原子 Reader 写操作链、一个复合 Word plan 链、`document.selection-text` 与 selection-planning-lease 只读链，以及 no-pause scoped-lock 路径。自动化与安装事务通过仍不等同于已安装应用的 GUI 运行时 E2E；未执行的窗口交互不得推断为通过。
 
 - Harness/Prompt 单元测试覆盖状态机、取消、能力、Evidence、ToolPolicy、格式冲突、降级和提示注入。
 - Model Center 测试覆盖 endpoint 身份轮换、能力隔离、密钥引用迁移和模型目录竞态。
 - DOCX 专用读取管线覆盖快照一致性、视觉缓存隔离、Provider Session 隔离、能力探测和来源引用。
 - Playwright 覆盖“模型中心选择模型 → DOCX 读取”以及五种编辑器宿主。
 - SDKJS QUnit 覆盖轻量 preflight 与完整快照的执行边界。
-- 七个 Word 写契约覆盖严格输入、mixed/结构状态、单次 token、原生位置与 quote/revision 绑定、版本/选区过期、无副作用读取、scoped locks、事务回滚、单个原生 Undo，以及 committed/unknown 结果不重试；selection-text 另覆盖固定 RPC 参数、长度/控制字符校验和不持久化边界。
+- 七个原子 Word 写契约与复合 plan 覆盖严格输入、mixed/结构状态、单次 token、原生位置与 quote/revision 绑定、版本/选区过期、无副作用读取、scoped locks、整组事务回滚、单个原生 Undo，以及 committed/unknown 结果不重试；selection-text 与 planning lease 另覆盖固定 RPC 参数、TTL、one-shot、长度/控制字符和不持久化边界。

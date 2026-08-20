@@ -17,6 +17,7 @@ const { chromium } = require(path.join(agentDir, "node_modules/playwright"));
 const defaultPages = [
   "word/plugins/pluginsApi.html",
   "word/plugins/multimodalSnapshot.html",
+  "word/plugins/documentWordEditPlan.html",
   "word/plugins/remoteCollaborativeApply.html",
   "word/plugins/selectionParagraphFormatting.html",
   "word/plugins/selectionListFormatting.html",

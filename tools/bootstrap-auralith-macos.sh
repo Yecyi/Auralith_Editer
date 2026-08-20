@@ -66,19 +66,19 @@ prepare_submodule() {
 
 prepare_submodule \
     "desktop-sdk" \
-    "f473911aaf521b89a8010f6a5fe0e3e8f0bc852b" \
+    "4b107d01f955d5d73c8ac5c4c247eb3454071fc3" \
     "https://github.com/Yecyi/desktop-sdk.git" \
     "https://github.com/ONLYOFFICE/desktop-sdk.git"
 
 prepare_submodule \
     "web-apps" \
-    "fa600a69cabc868efd4e28a3fb502ee89a82bfcc" \
+    "ae954dc3ccd9eab01148bb744c13ee64d5933d65" \
     "https://github.com/Yecyi/web-apps.git" \
     "https://github.com/ONLYOFFICE/web-apps-pro.git"
 
 prepare_submodule \
     "sdkjs" \
-    "4ab23fb5ea6d5a10806615959d4dc26b3b4db2b3" \
+    "f1946d70cdc4a970e7c17207f8613b448d8afe5f" \
     "https://github.com/Yecyi/sdkjs.git" \
     "https://github.com/ONLYOFFICE/sdkjs.git"
 

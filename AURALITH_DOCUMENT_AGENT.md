@@ -8,14 +8,25 @@ from evictable snapshot/index caches. Each request still uses an isolated
 Provider and General Agent Harness execution so conversational continuity never
 weakens evidence, permission, or revision checks.
 
-The sidebar follows a compact ChatGPT-style flow:
+The sidebar follows a compact ChatGPT-style flow backed by a per-document
+durable queue:
 
-1. persist the user message and a pending assistant checkpoint;
-2. start the isolated reader task;
-3. stream an explicitly unverified draft;
-4. validate the structured answer and citations;
-5. durably replace the pending checkpoint with the verified answer;
-6. render citations on the answer that owns them.
+1. atomically persist the user message and a `queued` run;
+2. admit at most one active run for that document and freeze its Host-owned
+   `ReaderRequestPlanV1`;
+3. publish source-aware `ReaderActivityV1` phases and stream an explicitly
+   unverified draft;
+4. accept exactly one terminal `StructuredReaderResultV2` and validate every
+   claim against the current document, external request, or model plane;
+5. persist the final assistant message before atomically replacing the draft;
+6. mark the run complete and start the next still-authorized queue item.
+
+The composer remains editable while a read task runs. A document has at most
+one active and 32 queued runs; queued requests can be edited, reordered or
+cancelled. Different documents have independent lanes. After restart, an
+active run becomes `interrupted` and queued runs become `waiting`; neither is
+silently replayed. A queued mutation is not allowed to retain a transient
+selection lease.
 
 A request owns an immutable snapshot lease only when its source plan uses the
 document. Ordinary typed document changes never cancel that grounded request or
@@ -24,7 +35,9 @@ marks the answer as based on its send-time snapshot, and the latest document is
 read only after the request settles. Model-only and external-only answers do not
 hold the document refresh path. Document/editor replacement,
 context-generation change, permission or mode change, consent withdrawal, and
-explicit Stop remain cancellation boundaries.
+explicit Stop remain cancellation boundaries. Stop aborts only the current
+request, immediately publishes and persists one cancelled message, and ignores
+late provider chunks or finals. It does not invalidate unrelated queued work.
 
 If the app closes between steps 2 and 5, the pending record is restored as an
 explicit interrupted response. It is never relabeled as verified.
@@ -58,17 +71,25 @@ immutable source plan:
 | `hybrid` | required | allowed | forbidden |
 | `external` | required only for an explicit document comparison | allowed | required |
 
-Routing uses a small precedence order rather than a second model call:
+Routing first applies zero-latency hard rules for explicit document, web,
+hybrid and write requests. Only a genuinely ambiguous read request may invoke
+the currently selected model once as a bounded classifier: it receives the
+current question, the most recent user topic and the Host-allowed source
+labels, but no document contents or assistant answer; it has a 96-token,
+four-second, no-retry contract. The resulting `ReaderRequestPlanV1` freezes
+`taskIntent`, source plane, retrieval scope and a Host-built `effectiveQuery`.
+The classifier cannot choose an Office capability or increase mode, source,
+network or consent permissions.
 
-1. explicit browsing or time-sensitive wording such as “latest”, “today”, or
-   “official source” requires external research;
-2. an explicit request to combine the document with background knowledge uses
-   the hybrid plane;
-3. explicit document, selection, table, image, page, quote, or transform
-   wording remains document-only;
-4. a short referential follow-up inherits the previous completed answer plane;
-5. an otherwise standalone creation or explanation request uses model
-   knowledge.
+Each document chooses `off`, `explicit-only` or `adaptive` external research.
+Migrated sessions use `explicit-only`: only an explicit request to search or
+browse may use the network. Time-sensitive wording alone is blocked with an
+actionable message instead of silently searching or falling back to stale
+model knowledge. `adaptive` additionally lets the bounded classifier propose
+external research, but only after the search provider and consent gates pass
+and the two-second cancellable source-plan countdown completes. A short
+referential follow-up combines only the previous user topic and current user
+text; assistant prose never enters a retrieval or web query.
 
 The plan can narrow access but the model cannot broaden it. A model-only call
 does not walk the manifest, does not request remote-document consent, emits no
@@ -86,6 +107,17 @@ supported search provider is configured or no usable result is returned, the
 request fails explicitly instead of silently falling back to possibly stale
 model knowledge.
 
+`StructuredReaderResultV2` keeps the streamable top-level `content` plus
+closed claim ranges. Every material document claim binds a current evidence
+ID, durable anchor and exact quote. Every external claim binds the current
+request ID, an allowlisted exact URL and a quote from its sanitized excerpt.
+Model claims are explicitly labeled and cannot carry time-sensitive facts.
+Range drift, overlap conflict, stale/invalid anchor, quote mismatch, unknown
+URL, missing material provenance, absent terminal result, or duplicate
+terminal result rejects the formal answer. Draft text never enters this
+verified object. Citation display is appended without changing canonical
+claim offsets.
+
 ## Conversation window algorithm
 
 The current implementation keeps only the useful, deterministic part of
@@ -93,8 +125,10 @@ OpenCode's compaction design:
 
 - allocate a bounded history budget from the selected model context window;
 - preserve the most recent two complete turns as an exact tail;
-- compact only the older head into user intent, a bounded answer excerpt, and
-  historical source IDs;
+- fit older complete turns from newest to oldest, then restore chronological
+  prompt order; record only message IDs that actually fit;
+- compact an admitted older turn into user intent, a bounded answer excerpt,
+  and historical source IDs;
 - exclude pending, failed, and cancelled output;
 - never split a source ID or silently promote a summary to evidence;
 - include the context digest in result-cache identity;
@@ -128,13 +162,21 @@ schema, source-ID preservation, and no-hidden-reasoning policy.
 
 ## Durable records
 
-IndexedDB schema v3 adds two non-evictable stores:
+IndexedDB schema v4 keeps the original two non-evictable stores and adds three
+bounded operational stores:
 
 - `documentAgentSessions`: one session per `documentId`;
 - `documentAgentMessages`: ordered user/assistant records with request,
   snapshot, model target, configuration revision, context digest, citations,
   durable citation anchors, selected answer plane, and whether the answer
-  actually depends on document evidence.
+  actually depends on document evidence; a reverse session/time index loads
+  only the latest 50 messages before older-page requests;
+- `documentAgentRuns`: queue order, state, frozen request plan, context epoch,
+  revision, last safe checkpoint and timing-only milestones;
+- `documentAgentContextCheckpoints`: deterministic cursor, digest, actual
+  message IDs and budget version, never an LLM-written factual summary;
+- `documentAgentProgress`: last reconciled snapshot/revision/content hash,
+  section fingerprints, coverage and audit high-water mark.
 
 Snapshot data, rendered assets, embeddings, and analyses remain in the bounded
 reader cache. Cache eviction therefore cannot delete the user's conversation.
@@ -149,46 +191,44 @@ deliberately different:
 
 - the document conversation is durable and user-visible;
 - Provider transport and Harness state are request-scoped;
-- streaming deltas are ephemeral;
+- streaming deltas are ephemeral and `aria-live="off"`;
 - verified result checkpoints and bounded audit metadata are durable;
+- the visible “work process” is rendered only from persisted or current
+  Host-observed activity phases and source planes, never hidden chain of
+  thought;
 - production Word edits are governed by a Host-owned per-document mode:
   `read` denies writes, `comment` permits only native comments, and `auto`
   permits the bounded production registry. Every permitted write still uses a
   request-scoped runtime, immutable Host authorization, one-shot receipt,
   non-blocking scoped lock, authoritative result, and native LIFO Undo.
 
-Useful OpenCode runtime ideas for later phases are durable input admission,
-coalesced per-session execution, typed context epochs, and separate live versus
-durable event planes. Its filesystem patching, Git snapshot, and process-local
-approval mechanisms are not suitable Office mutation primitives and will not
-replace native History, tracked revisions, locks, or Undo.
+OpenCode-inspired durable input admission, per-document execution, typed
+context epochs and separate live/durable event planes are now implemented in
+the Reader. Its filesystem patching, Git snapshot and process-local approval
+mechanisms remain unsuitable Office mutation primitives and do not replace
+native History, tracked revisions, locks or Undo.
 
 ## Next implementation phases
 
 1. Unify SDKJS and host document identity, including untitled documents,
    rename, Save As lineage, and multi-window fencing.
-2. Persist a bounded Harness event audit with prompt selection/version,
-   evidence IDs, lifecycle state, and redacted errors.
-3. Complete claim-range coverage for every material statement; exact evidence
-   quote validation is already active in production.
-4. Bind remote-consent receipts to provider endpoint, document, task, modality,
+2. Extend the run ledger with bounded prompt/profile versions, evidence IDs and
+   redacted Host errors without persisting model drafts or reasoning.
+3. Bind remote-consent receipts to provider endpoint, document, task, modality,
    and expiry; migrate API keys from localStorage to the OS credential store.
-5. Add durable document progress high-water marks and startup reconciliation;
-   editor change events remain acceleration hints rather than correctness
-   authority.
-6. Extend the same mode-authorized strict-intent protocol to the next Word
-   semantics: body-text replacement with a frozen target, paragraph
-   styles/outline, list creation/conversion, durable cell identity and table
-   structure, comment reply/resolve, and revision-aware review. One authorized
-   intent maps to one native LIFO history point; do not add cross-intent timed
-   coalescing.
-7. Add a submit-time opaque selection lease before enabling model-generated
-   rewrites from chat. The current deterministic chat router intentionally
-   handles only complete-message, single-match commands; a delayed model result
-   must never attach itself to whatever selection happens to be live later.
-8. Generalize the strict external-research adapter beyond the currently
+4. Generalize the strict external-research adapter beyond the currently
    configured Exa path while retaining the same bounded result contract, URL
    allowlist validation, and Harness network audit.
+5. Extend durable addressing beyond the current short-lived, selection-only
+   planning lease before allowing queued, restartable or structural model
+   plans. Caret-only paragraph/list targets remain unsupported rather than
+   guessed.
+6. Add paragraph styles/outline, list creation/conversion/renumbering, durable
+   cell identity and table structure, comment reply/resolve, and native
+   revision-aware review. One authorized intent still maps to one native LIFO
+   history point.
+7. Add semantic `TableModel` extraction and evaluation-backed global document
+   benchmarks before adding further retrieval algorithms.
 
 ## Provenance
 

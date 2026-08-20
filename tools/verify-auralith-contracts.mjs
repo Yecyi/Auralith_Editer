@@ -15,6 +15,14 @@ const paths = Object.freeze({
     rootDir,
     "desktop-sdk/ChromiumBasedEditors/plugins/ai-agent/src/office-tools/office-capabilities.json"
   ),
+  desktopWordEditPlan: path.join(
+    rootDir,
+    "desktop-sdk/ChromiumBasedEditors/plugins/ai-agent/src/office-tools/document-word-edit-plan.ts"
+  ),
+  desktopSelectionWriteProfile: path.join(
+    rootDir,
+    "desktop-sdk/ChromiumBasedEditors/plugins/ai-agent/src/office-tools/selection-write-profile.ts"
+  ),
   buildScript: path.join(
     rootDir,
     "desktop-sdk/ChromiumBasedEditors/plugins/ai-agent/scripts/build.js"
@@ -52,6 +60,13 @@ const paths = Object.freeze({
   }),
   wordConfig: path.join(rootDir, "sdkjs/configs/word.json"),
   sdkRunAll: path.join(rootDir, "sdkjs/tests/runAll.js"),
+  sdkWordEditPlan: path.join(
+    rootDir,
+    "sdkjs/word/Editor/document/document-word-edit-plan.js"
+  ),
+  sdkWordApi: path.join(rootDir, "sdkjs/word/api_plugins.js"),
+  sdkBaseApi: path.join(rootDir, "sdkjs/common/apiBase_plugins.js"),
+  sdkQunitRunner: path.join(rootDir, "tools/run-sdkjs-qunit.mjs"),
 });
 
 function readText(filePath) {
@@ -84,6 +99,24 @@ function parseStringConst(source, name) {
 
 function parseBooleanConst(source, name) {
   return matchConst(source, name, "true|false") === "true";
+}
+
+function parseFrozenStringArray(source, name, label) {
+  const match = source.match(
+    new RegExp(
+      `\\b(?:export\\s+const|var)\\s+${name}\\s*=\\s*` +
+        "Object\\.freeze\\(\\[([\\s\\S]*?)\\]\\s*(?:as\\s+const)?\\s*\\)\\s*;",
+      "u"
+    )
+  );
+  assert.ok(match, `${label} must declare ${name} as a frozen string array.`);
+  const stringPattern = /"(?:[^"\\]|\\.)*"/gu;
+  const values = [...match[1].matchAll(stringPattern)].map((entry) =>
+    JSON.parse(entry[0])
+  );
+  const residue = match[1].replace(stringPattern, "").replace(/[\s,]/gu, "");
+  assert.equal(residue, "", `${label} ${name} contains a dynamic entry.`);
+  return values;
 }
 
 function parseHostAllowlist(source) {
@@ -162,6 +195,10 @@ function verifyRegistry(registry) {
 
 async function main() {
   const registry = readJson(paths.registry);
+  const desktopWordEditPlan = readText(paths.desktopWordEditPlan);
+  const desktopSelectionWriteProfile = readText(
+    paths.desktopSelectionWriteProfile
+  );
   const host = readText(paths.host);
   const hostRuntime = readText(paths.hostRuntime);
   const hostStyle = readText(paths.hostStyle);
@@ -177,6 +214,10 @@ async function main() {
   );
   const wordConfig = readText(paths.wordConfig);
   const sdkRunAll = readText(paths.sdkRunAll);
+  const sdkWordEditPlan = readText(paths.sdkWordEditPlan);
+  const sdkWordApi = readText(paths.sdkWordApi);
+  const sdkBaseApi = readText(paths.sdkBaseApi);
+  const sdkQunitRunner = readText(paths.sdkQunitRunner);
 
   verifyRegistry(registry);
 
@@ -250,6 +291,127 @@ async function main() {
     registry.protocolVersion,
     "Host write transport protocol disagrees with the capability registry."
   );
+
+  const expectedWordEditPlanOperationTypes = Object.freeze([
+    "selection.textFormatting",
+    "selection.paragraphFormatting",
+    "selection.listFormatting",
+    "selection.comment",
+    "selection.tableCellText",
+  ]);
+  const wordEditPlan = registry.capabilities.find(
+    (capability) => capability.id === "document.word-edit-plan"
+  );
+  assert.ok(wordEditPlan, "document.word-edit-plan is missing.");
+  assert.deepEqual(projectCapability(wordEditPlan), {
+    id: "document.word-edit-plan",
+    version: "1.0",
+    status: "enabled",
+    productionEnabled: true,
+    operations: [
+      {
+        id: "inspect",
+        effect: "read",
+        approval: "none",
+        undo: "none",
+        transportMethod: "InspectDocumentWordEditPlan",
+        builtinRpc: false,
+      },
+      {
+        id: "apply",
+        effect: "write",
+        approval: "required",
+        undo: "native-lifo",
+        transportMethod: "ApplyDocumentWordEditPlan",
+        builtinRpc: false,
+      },
+    ],
+  });
+
+  const desktopWordEditPlanTypes = parseFrozenStringArray(
+    desktopWordEditPlan,
+    "DOCUMENT_WORD_EDIT_PLAN_OPERATION_TYPES",
+    "Desktop Word edit-plan contract"
+  );
+  const hostWordEditPlanTypes = parseFrozenStringArray(
+    writeProfiles,
+    "WORD_EDIT_PLAN_OPERATION_TYPES",
+    "Host Word edit-plan contract"
+  );
+  const sdkWordEditPlanTypes = parseFrozenStringArray(
+    sdkWordEditPlan,
+    "SUPPORTED_OPERATION_TYPES",
+    "SDKJS Word edit-plan contract"
+  );
+  assert.deepEqual(desktopWordEditPlanTypes, expectedWordEditPlanOperationTypes);
+  assert.deepEqual(hostWordEditPlanTypes, expectedWordEditPlanOperationTypes);
+  assert.deepEqual(sdkWordEditPlanTypes, expectedWordEditPlanOperationTypes);
+  assert.match(
+    desktopWordEditPlan,
+    /DOCUMENT_WORD_EDIT_PLAN_SCHEMA_VERSION\s*=\s*"1\.0"\s+as\s+const/u
+  );
+  assert.match(
+    desktopWordEditPlan,
+    /MAX_DOCUMENT_WORD_EDIT_PLAN_OPERATIONS\s*=\s*12\s*;/u
+  );
+  assert.match(
+    desktopSelectionWriteProfile,
+    /DOCUMENT_WORD_EDIT_PLAN_WRITE_PROFILE\s*=\s*Object\.freeze\(\{/u
+  );
+  assert.match(
+    desktopSelectionWriteProfile,
+    /handlerId:\s*"auralith\.docx\.word-edit-plan"/u
+  );
+
+  const hostWordEditPlanProfile = writeProfileContract.getProfile(
+    "document.word-edit-plan",
+    "1.0",
+    "apply"
+  );
+  assert.ok(hostWordEditPlanProfile, "Host Word edit-plan profile is missing.");
+  assert.ok(Object.isFrozen(hostWordEditPlanProfile));
+  assert.ok(Object.isFrozen(hostWordEditPlanProfile.supportedOperationTypes));
+  assert.deepEqual(
+    {
+      key: hostWordEditPlanProfile.key,
+      capabilityId: hostWordEditPlanProfile.capabilityId,
+      capabilityVersion: hostWordEditPlanProfile.capabilityVersion,
+      operation: hostWordEditPlanProfile.operation,
+      sdkSchemaVersion: hostWordEditPlanProfile.sdkSchemaVersion,
+      inspectSdkMethod: hostWordEditPlanProfile.inspectSdkMethod,
+      applySdkMethod: hostWordEditPlanProfile.applySdkMethod,
+      approvalTarget: hostWordEditPlanProfile.approvalTarget,
+      supportedOperationTypes: [
+        ...hostWordEditPlanProfile.supportedOperationTypes,
+      ],
+    },
+    {
+      key: "document.word-edit-plan@1.0#apply",
+      capabilityId: "document.word-edit-plan",
+      capabilityVersion: "1.0",
+      operation: "apply",
+      sdkSchemaVersion: "1.0",
+      inspectSdkMethod: "InspectDocumentWordEditPlan",
+      applySdkMethod: "ApplyDocumentWordEditPlan",
+      approvalTarget: "documentWordEditPlan",
+      supportedOperationTypes: [...expectedWordEditPlanOperationTypes],
+    }
+  );
+
+  assert.equal(parseStringConst(sdkWordEditPlan, "SCHEMA_VERSION"), "1.0");
+  assert.equal(Number(matchConst(sdkWordEditPlan, "MAX_OPERATIONS", "[0-9]+")), 12);
+  for (const method of [
+    "CreateSelectionPlanningLease",
+    "InspectDocumentWordEditPlan",
+    "ApplyDocumentWordEditPlan",
+  ]) {
+    const methodPattern = new RegExp(
+      `Api\\.prototype\\["pluginMethod_${method}"\\]`,
+      "u"
+    );
+    assert.match(sdkWordApi, methodPattern, `Word API omits ${method}.`);
+    assert.match(sdkBaseApi, methodPattern, `Base API omits ${method} fallback.`);
+  }
   assert.equal(
     parseStringConst(transport, "AUTHORIZE_TYPE"),
     "auralith-agent:tool-authorize"
@@ -336,6 +498,7 @@ async function main() {
     "word/Editor/document/selection-comment.js",
     "word/Editor/document/selection-list-formatting.js",
     "word/Editor/document/selection-table-cell-text.js",
+    "word/Editor/document/document-word-edit-plan.js",
   ]) {
     assert.ok(wordConfig.includes(`\"${source}\"`), `Word build config omits ${source}.`);
   }
@@ -346,15 +509,21 @@ async function main() {
     "word/plugins/selectionComment.html",
     "word/plugins/selectionListFormatting.html",
     "word/plugins/selectionTableCellText.html",
+    "word/plugins/documentWordEditPlan.html",
     "word/plugins/remoteCollaborativeApply.html",
   ]) {
     assert.ok(sdkRunAll.includes(`'${page}'`), `SDKJS default suite omits ${page}.`);
   }
+  assert.ok(
+    sdkQunitRunner.includes('"word/plugins/documentWordEditPlan.html"'),
+    "Root SDKJS verifier omits the documentWordEditPlan page."
+  );
 
   console.log(
     `OK contracts: ${registry.capabilities.length} capabilities, ` +
       `${expectedBuiltinMethods.length} built-in RPC methods, ` +
-      `selection-formatting=${formatting.status}`
+      `selection-formatting=${formatting.status}, ` +
+      `word-edit-plan=${wordEditPlan.status}/${sdkWordEditPlanTypes.length}-op`
   );
 }
 

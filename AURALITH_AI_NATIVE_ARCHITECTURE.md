@@ -1,10 +1,10 @@
 # Auralith AI-native Office architecture
 
 Status: normative architecture and delivery contract
-Implementation status refreshed: 2026-08-11. The natural-language-only
-composer source, root gitlink, full cross-submodule gate and staged package are
-current. Formal installation is pending because the old Test.app was running
-while macOS was locked; older installed GUI evidence is historical only
+Implementation status refreshed: 2026-08-21. The streaming, durable queue,
+request planning, V2 grounding and bounded Word-plan source checkpoint is under
+final cross-submodule and installed-app verification. Older package hashes and
+GUI observations below remain historical until a new formal install is recorded.
 
 This document is the source of truth for how Auralith_Editer adds AI-facing
 Office capabilities. It covers SDKJS document semantics, editor context,
@@ -64,8 +64,9 @@ release readiness requires every release gate in this document.
 
 The current implementation is split across three modified submodules:
 
-- `sdkjs` owns Word document snapshots, bounded selection-text reading, and the
-  seven bounded Word write semantics described below.
+- `sdkjs` owns Word document snapshots, bounded selection reads, seven bounded
+  atomic Word writes and the closed composite Word-plan transaction described
+  below.
 - `web-apps` owns the built-in editor launcher, panel, Advanced Settings
   integration, theme mapping, and restricted iframe bridge.
 - `desktop-sdk/ChromiumBasedEditors/plugins/ai-agent` owns the Agent UI,
@@ -91,6 +92,7 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | `document.body-text-replacement@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Explicit whole-body clear or generated plain-text replacement in Auto mode; generation is lock-free, apply is bound to the pre-generation content revision and exact main body, mutation uses short scoped locks, rollback proof and one native LIFO Undo | Installed-app replace/delete/Undo and stale-during-generation evidence; rich structure, arbitrary-range generation and track-revisions output remain absent |
 | `document.selection-text@1.0` | partial, bounded read support | production source enabled; installed-app E2E pending | Fixed-argument `GetSelectedText` RPC for a maximum 4096-code-unit single-line selection used only by the current request; no Host-context or durable-memory projection | Current installed-app selection capture/generation evidence; multi-paragraph and richer selection serialization remain out of scope |
 | `document.text-replacement@1.0` | partial, deliberately narrow source path | production source enabled; installed-app E2E pending | Natural-language selection, exact-unique and explicit exact-all replacement/deletion in Auto mode; main-body-only inspect, exact quote/policy verification, bounded match set, short scoped lock, sanitized receipt and one native LIFO Undo | Current installed-app selection/unique/all/delete/fail/cancel/Undo evidence; multi-paragraph selection, rich text, non-body stories and Track Revisions remain unsupported |
+| `document.word-edit-plan@1.0` | partial, full source path | production source enabled; installed-app E2E pending | Host-validated group of at most 12 text-format, paragraph-format, existing-list, final-comment, or exclusive simple-cell operations; one outer SDKJS action, exact rollback, one native History point, proven-disjoint rebase, short scoped locks, and no generic method/script entry | Installed-app multi-op apply/fail/cancel/Undo evidence; body/exact replacement, structural operations, queued/durable plans and caret-only targets remain unsupported |
 | Other Word mutations such as paragraph structure, list creation, table structure, comment resolution, and revisions | absent | blocked | Existing editor internals only; no enabled Auralith capability contract | Full SDKJS-first capability lifecycle |
 | Spreadsheet document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Spreadsheet context, semantic read contract, selection/range identity, calculation/revision rules, and safe mutations |
 | Presentation document intelligence | shell | blocked for document operations | Common Agent entry and model configuration | Slide/object context, semantic read contract, selection identity, transaction and Undo rules |
@@ -100,6 +102,41 @@ is loaded as a built-in feature and is not registered by plugin GUID.
 | Native Qt start page and title-bar integration | absent | blocked | Integration points are known | Rebuilt `desktop-apps` Qt shell and native lifecycle tests |
 | macOS isolated test-app installation | partial | 2026-08-11 package passed stage-only; formal swap pending because the old Test.app is running while macOS is locked | Guarded fixed-target dry-run/stage/install workflow, isolated builds, payload manifest/hash verification, same-volume transactional replacement, rollback and deep signing checks; installed rollback remains `20260810-141832` | Unlock, exit Test.app normally, run formal install, then complete selection/exact replacement, Comment, fail/cancel/conflict and Undo GUI matrix |
 | Cross-submodule verification | native, repository-gate scope | current `fast --network` and `full --network` verified | `tools/verify-auralith.sh` checks Node 20, exact gitlinks/remotes/fetchability, cross-layer contracts, focused/full Agent, Host, SDKJS, Vite and Closure paths without overwriting deploy assets | Add hosted CI and artifact publication |
+
+### Reader request, queue and grounding boundary
+
+Every new DOCX request MUST freeze `ReaderRequestPlanV1`: one of
+`answer/summary/audit/cowork`, one of `document/model/hybrid/external`, a
+`none/lookup/global` retrieval scope, a Host-built effective query and a
+decision origin. Explicit rules take precedence. Only unresolved read intent
+may use one four-second, 96-token classifier call, and its output is intersected
+with the Host source ceiling. It MUST NOT choose Office capabilities. Existing
+sessions default to `explicit-only` external research; time-sensitive wording
+alone MUST NOT silently start a network request.
+
+IndexedDB v4 stores per-document runs, deterministic context checkpoints and
+document progress alongside sessions/messages. A document has one active and
+at most 32 queued runs. Restart turns active work into `interrupted` and queued
+work into `waiting`; committed-unverified or unknown mutations MUST never be
+replayed. Initial conversation load is the latest 50 messages with reverse
+pagination. Context compaction preserves the newest complete turns that fit and
+records only their actual message IDs; it MUST NOT use an LLM summary as fact.
+
+`ReaderActivityV1` exposes only Host-observed phase, source, timestamp, attempt
+and bounded progress. It is “work process,” not model chain of thought. Drafts
+are unverified, non-live-region and request-local; Stop publishes one durable
+cancel result and late output cannot overwrite it. A formal new answer MUST be
+the single terminal `StructuredReaderResultV2`. Each material claim binds an
+exact UTF-16 span to a current document quote/durable anchor, a request-local
+external URL/excerpt, or explicitly labeled model knowledge. Unknown URLs,
+time-sensitive model claims, range/quote mismatch, stale anchors, missing or
+duplicate terminal envelopes fail closed.
+
+Explicit global audit uses the DOCX outline in deterministic section order,
+bounded map/reduce concurrency and per-section coverage. Ordinary lookup keeps
+the existing BM25F, structural expansion/rerank and optional exact-vector path.
+Zero lexical/structural hits MUST report unsupported rather than pack arbitrary
+leading chunks.
 
 ### Production Word selection-write boundary
 
@@ -113,21 +150,27 @@ receipts or SDKJS operations.
 
 The source production gate, dedicated receipt transport, Harness descriptors,
 runtime authorizer, Host mode/executor and Reader command paths are now
-connected for exactly seven write capabilities: text formatting, paragraph formatting,
+connected for seven atomic write capabilities: text formatting, paragraph formatting,
 existing-list level, selection comment add, strict table-cell plain-text
 replacement, revision-bound main-body plain-text replacement, and bounded
-selection/exact-match text replacement. The built-in manifest derives these
-enabled entries from the typed Office registry. A separate read-only
-`document.selection-text@1.0` capability supports generated selection rewrites.
+selection/exact-match text replacement. A separate closed
+`document.word-edit-plan@1.0` composes five already-registered kernels in one
+all-or-nothing History transaction. The built-in manifest derives these
+enabled entries from the typed Office registry. Read-only
+`document.selection-text@1.0` and Host-private selection-planning leases support
+request-local generated selection work.
 
-Writes deliberately remain outside the read-only RPC allowlist. The only new
-read method is `GetSelectedText` with the exact fixed options
+Writes deliberately remain outside the read-only RPC allowlist. The public
+Reader text method is `GetSelectedText` with the exact fixed options
 `{Numbering:false, Math:false, TableCellSeparator:"\t", ParaSeparator:"\n"}`.
 Its bounded value is request-local and MUST NOT be placed in Host context or
 durable conversation memory. The Reader receives only a bounded preview, an opaque one-shot Host
 receipt, and a sanitized authoritative outcome. It never receives a selection
 token, exact SDKJS method, raw target identity, remote lock ids, or reusable
-authorization. The host verifies source/origin/channel/context, capability and
+authorization. A selection-planning lease similarly exposes only an `sl-*`
+Host handle; its `wlease-*` SDK token, native selection state, fingerprint and
+region journal never cross into the Reader or model. The host verifies
+source/origin/channel/context, capability and
 profile, normalizes and freezes the payload, checks its own document-level
 `read/comment/auto` mode, and consumes the receipt exactly once. `comment` and
 `auto` are standing grants and therefore do not show a per-intent confirmation
@@ -142,12 +185,23 @@ A rejected executor is latched as `TOOL_EXECUTION_UNCERTAIN` with
 is also non-retryable. A handler or UI cannot swallow, relabel, or automatically
 repeat either terminal state.
 
-All seven writes use a frozen target and exact precondition, accept only proven
+All seven atomic writes and the composite plan use frozen targets and exact preconditions, accept only proven
 disjoint revision rebase, acquire only the final target closure through an
 asynchronous scoped lock, and execute one synchronous mutation/verification
 critical section. Text-formatting resources are resolved and preloaded before
-the lock. One mode-authorized intent creates one native LIFO history point; there is
-no Agent-only Undo stack or addressable Undo token.
+the lock. A composite plan has at most 12 ordered operations, requires comment
+to be final and table-cell text to be exclusive, and creates one outer native
+History point. One mode-authorized intent therefore needs one ordinary Undo;
+there is no Agent-only Undo stack or addressable Undo token.
+
+Model-proposed plans are an immediate, selection-only subset, not a generic
+agent tool loop. One bounded proposer may return only text, paragraph, list or
+comment properties; Host injects operation IDs, capability, revision and a
+one-shot 30-second selection lease. It cannot run in `read`, cannot enter the
+durable queue, and cannot survive restart. A non-empty real selection is
+required; caret-only paragraph/list targets, intersecting edits, expired or
+replayed leases fail closed. Only unchanged or SDKJS-proven-disjoint targets
+may reach Inspect and Apply.
 
 The strict table-cell capability is not a generic table editor. It requires the
 entire text of exactly one simple, physical, unmerged top-level cell to be
@@ -194,9 +248,19 @@ The 2026-08-04 counts and installation hash predate the current seven-write
 production connection and MUST be treated only as historical evidence. They
 MUST NOT be copied forward as current results.
 
-The current source branch pins the pushed submodule commits
+The 2026-08-21 source checkpoint pins the pushed submodule commits
+`desktop-sdk@4b107d01`, `web-apps@ae954dc3c`, and `sdkjs@f1946d70c`.
+Before updating the root gitlinks, Node.js 20 verification passed desktop
+Vitest 164 files/2,004 tests, Chromium Playwright 287/287, all ten registered
+Auralith SDKJS QUnit pages, isolated desktop Word Closure, TypeScript, Biome,
+Host contract/executor/transport tests, and the 3,350-module production Vite
+build. The verifier wrote only temporary artifacts. Formal installation and
+installed-app interaction evidence remain pending at this point in the
+handoff and MUST be recorded separately after the guarded swap.
+
+The 2026-08-11 source checkpoint pinned the pushed submodule commits
 `desktop-sdk@f010aa45`, `web-apps@fa600a69c`, and `sdkjs@e9b392c12`.
-Before the root-gitlink gate, desktop full Vitest passed 150 files and
+Before its root-gitlink gate, desktop full Vitest passed 150 files and
 1,741/1,741 tests; Biome passed 514 files; Reader TypeScript and `npx vite
 build` (3,336 modules) passed. Focused natural-language/composer tests passed 4
 files/112 tests and the updated Chromium composer path passed 1/1. These local
@@ -561,7 +625,8 @@ history points. A high-level API that starts its own action cannot join a batch
 until SDKJS explicitly suppresses nested points for the intent history type and
 tests prove the one-intent/one-point invariant.
 
-Candidate B's delayed presentation queue is deferred. Formatting a precise
+Candidate B's delayed **write-coalescing** queue is deferred; this is distinct
+from the durable per-document queue for independent Reader requests. Formatting a precise
 range is not safely addressable by paragraph identity alone, and coalescing by
 a 50–250 ms timer would merge separate intents and Undo boundaries. The
 system MAY batch properties already contained in the same authorized patch, as
@@ -577,8 +642,9 @@ yet evidence that real formatting writes avoid a snapshot refresh.
 
 ### Non-blocking cowork concurrency model
 
-This model is implemented for the seven declared Word writes. Reads, including
-the request-local bounded `document.selection-text` capture, planning, model
+This model is implemented for the seven atomic Word writes and the composite
+Word plan. Reads, including the request-local bounded
+`document.selection-text` capture, selection lease, planning, model
 generation, mode authorization and formatting-resource preload run without a document
 interaction lock. Collaborative apply uses the SDKJS asynchronous scoped-lock
 path, revalidates the frozen target after grant, and holds only a short
@@ -833,7 +899,11 @@ Current source implementation:
    replacement of one simple unmerged cell;
 5. explicit whole-body plain-text generation/clear is connected; and
 6. bounded main-body selection, exact-unique and explicit exact-all
-   replacement/deletion is connected through `document.text-replacement@1.0`.
+   replacement/deletion is connected through `document.text-replacement@1.0`;
+   and
+7. `document.word-edit-plan@1.0` composes up to 12 closed text, paragraph,
+   existing-list, final-comment, or exclusive simple-cell operations into one
+   all-or-nothing native History point.
 
 Next semantic increments are paragraph styles/outline operations, list
 creation/conversion/renumbering, durable cell-level change identity followed by

@@ -13,7 +13,8 @@ usage() {
 Usage: bash tools/verify-auralith.sh [fast|full] [--network]
 
   fast       Static cross-module checks, focused Agent/Host/SDKJS tests,
-             TypeScript checks, and an isolated Vite production build.
+             focused Reader Chromium E2E, TypeScript checks, and an isolated
+             Vite production build.
   full       Full Agent unit/E2E checks, all registered Auralith SDKJS QUnit pages,
              and an isolated desktop Word Closure compile.
   --network  Also prove each root gitlink can be fetched by exact commit from
@@ -206,7 +207,7 @@ done
 step "Canonical capability, Host gate, manifest, and SDK build-list consistency"
 node tools/verify-auralith-contracts.mjs
 
-step "Host runtime, selection-formatting executor, and receipt transport"
+step "Host runtime, closed Word edit-plan executor, and receipt transport"
 node --check web-apps/apps/common/main/lib/auralith-agent-write-profiles.js
 node --check web-apps/apps/common/main/lib/auralith-agent-host-runtime.js
 node --check web-apps/apps/common/main/lib/auralith-agent-write-executor.js
@@ -219,8 +220,12 @@ node web-apps/test/unit-tests/auralith-agent-write-transport.test.js
 
 step "SDKJS syntax and suite registration"
 for file in \
+    sdkjs/common/HistoryCommon.js \
+    sdkjs/common/apiBase_plugins.js \
     sdkjs/common/CollaborativeEditingBase.js \
     sdkjs/word/Editor/CollaborativeEditing.js \
+    sdkjs/word/Editor/Document.js \
+    sdkjs/word/Editor/Run.js \
     sdkjs/word/Editor/document/content-change-feed.js \
     sdkjs/word/Editor/document/multimodal-snapshot.js \
     sdkjs/word/Editor/document/selection-text-formatting.js \
@@ -228,8 +233,10 @@ for file in \
     sdkjs/word/Editor/document/selection-comment.js \
     sdkjs/word/Editor/document/selection-list-formatting.js \
     sdkjs/word/Editor/document/selection-table-cell-text.js \
+    sdkjs/word/Editor/document/document-word-edit-plan.js \
     sdkjs/word/Editor/document/document-text-replacement.js \
     sdkjs/word/api_plugins.js \
+    sdkjs/tests/word/plugins/documentWordEditPlan.js \
     sdkjs/tests/word/plugins/documentTextReplacement.js \
     sdkjs/tests/word/plugins/remoteCollaborativeApply.js; do
     node --check "$file"
@@ -240,7 +247,8 @@ tsc_bin="$agent_root/node_modules/.bin/tsc"
 vite_bin="$agent_root/node_modules/.bin/vite"
 biome_bin="$agent_root/node_modules/.bin/biome"
 playwright_bin="$agent_root/node_modules/.bin/playwright"
-[[ -x "$vitest_bin" && -x "$tsc_bin" && -x "$vite_bin" ]] || \
+[[ -x "$vitest_bin" && -x "$tsc_bin" && -x "$vite_bin" && \
+    -x "$playwright_bin" ]] || \
     fail "Agent dependencies are missing. Install the locked dependencies under $agent_root."
 
 step "Agent TypeScript"
@@ -265,8 +273,22 @@ if [[ "$mode" == "fast" ]]; then
             src/office-tools/selection-comment.test.ts \
             src/office-tools/selection-list-formatting.test.ts \
             src/office-tools/selection-table-cell-text.test.ts \
+            src/office-tools/document-word-edit-plan.test.ts \
             src/office-tools/document-body-text.test.ts \
             src/office-tools/document-text-replacement.test.ts \
+            src/providers/structured-output.test.ts \
+            src/providers/openai/tests/document-reader-contract.test.ts \
+            src/providers/openai/tests/handlers.test.ts \
+            src/providers/anthropic/tests/document-reader-contract.test.ts \
+            src/providers/anthropic/tests/handlers.test.ts \
+            src/providers/anthropic/tests/index.test.ts \
+            src/providers/mistral/tests/document-reader-contract.test.ts \
+            src/providers/mistral/tests/handlers.test.ts \
+            src/providers/mistral/tests/index.test.ts \
+            src/providers/genai/tests/document-reader-contract.test.ts \
+            src/providers/genai/tests/handlers.test.ts \
+            src/document-reader/core/structured-reader-result-v2.test.ts \
+            src/document-reader/integration/answer-source-policy.test.ts \
             src/document-reader/integration/builtin-document-rpc.test.ts \
             src/document-reader/integration/document-agent-mode.test.ts \
             src/document-reader/integration/document-bridge.test.ts \
@@ -276,8 +298,19 @@ if [[ "$mode" == "fast" ]]; then
             src/document-reader/integration/document-text-replacement-agent.test.ts \
             src/document-reader/integration/document-text-replacement-command.test.ts \
             src/document-reader/integration/document-text-replacement-generation.test.ts \
+            src/document-reader/integration/deterministic-word-edit-plan-intent.test.ts \
+            src/document-reader/integration/document-word-edit-plan-agent.test.ts \
+            src/document-reader/integration/document-word-edit-plan-command.test.ts \
             src/document-reader/integration/immediate-selection-write-intent.test.ts \
             src/document-reader/integration/natural-language-document-edit-intent.test.ts \
+            src/document-reader/integration/reader-agent-harness.test.ts \
+            src/document-reader/integration/reader-db.test.ts \
+            src/document-reader/integration/reader-model-service-latency.test.ts \
+            src/document-reader/integration/reader-model-service.test.ts \
+            src/document-reader/integration/reader-model-word-edit-plan.test.ts \
+            src/document-reader/integration/reader-plan-step.test.ts \
+            src/document-reader/integration/reader-request-classifier.test.ts \
+            src/document-reader/integration/reader-request-plan.test.ts \
             src/document-reader/integration/selection-formatting-agent.test.ts \
             src/document-reader/integration/selection-formatting-command.test.ts \
             src/document-reader/integration/selection-paragraph-formatting-agent.test.ts \
@@ -288,7 +321,11 @@ if [[ "$mode" == "fast" ]]; then
             src/document-reader/integration/selection-list-formatting-command.test.ts \
             src/document-reader/integration/selection-table-cell-text-agent.test.ts \
             src/document-reader/integration/selection-table-cell-text-command.test.ts \
+            src/document-reader/session/context-window.test.ts \
+            src/document-reader/session/document-agent-run.test.ts \
             src/document-reader/session/document-agent.test.ts \
+            src/document-reader/ui/ReaderApp.scroll-follow.test.ts \
+            src/document-reader/ui/reader-queue-drain.test.ts \
             src/document-reader/ui/ReaderSelectionFormattingAction.test.tsx \
             src/document-reader/ui/ReaderParagraphFormattingAction.test.tsx \
             src/document-reader/ui/ReaderParagraphFormattingControl.test.tsx \
@@ -300,6 +337,8 @@ if [[ "$mode" == "fast" ]]; then
             src/document-reader/ui/ReaderTableCellTextControl.test.tsx \
             src/document-reader/ui/ReaderSelectionActionCloseButton.test.tsx \
             src/document-reader/ui/ReaderConversationThread.test.tsx \
+            src/document-reader/ui/ReaderRunQueue.test.tsx \
+            src/document-reader/ui/reader-request-planning-error.test.ts \
             src/document-reader/ui/ReaderSelectionWriteActions.test.tsx \
             src/document-reader/ui/ReaderSidebar.test.tsx \
             src/document-reader/ui/useReaderSelectionActionPanel.test.ts \
@@ -308,7 +347,36 @@ if [[ "$mode" == "fast" ]]; then
             src/document-reader/ui/host-tool-transport.test.ts
     )
 
-    step "Focused SDKJS typed-write and remote-cowork QUnit"
+    step "Focused Reader streaming, queue, persistence, and accessibility E2E"
+    (
+        cd "$agent_root"
+        reader_e2e_grep='stops a visible streaming draft immediately and ignores a late provider final|keeps the composer active and exposes editable, reorderable, cancellable queued runs|renders completed work traces from the persisted document, model, hybrid, and external source facts|migrates v3 sessions and messages to v4 without data loss|pages messages newest-first in IndexedDB while rendering each page chronologically|loads only the latest 50 conversation messages before paging older history upward|enforces one active run and 32 queued runs per document and recovers restart state'
+        CI=1 "$playwright_bin" test \
+            e2e/tests/document-reader.spec.ts \
+            --project=chromium \
+            --grep "$reader_e2e_grep" \
+            --retries=0 \
+            --workers=1 \
+            --reporter=line \
+            --output="$temp_root/playwright-fast"
+    )
+
+    step "Focused Host selection lease and atomic Word-plan E2E"
+    (
+        cd "$agent_root"
+        host_plan_grep='keeps a model-planning selection lease private through one atomic Host dispatch|submits one deterministic multi-action Word plan through one production Host dispatch'
+        CI=1 "$playwright_bin" test \
+            e2e/tests/auralith-agent-host.spec.ts \
+            --project=chromium \
+            --grep "$host_plan_grep" \
+            --retries=0 \
+            --workers=1 \
+            --reporter=line \
+            --output="$temp_root/playwright-host-fast"
+    )
+
+    step "Focused SDKJS atomic plan, typed-write, and remote-cowork QUnit"
+    node tools/run-sdkjs-qunit.mjs word/plugins/documentWordEditPlan.html
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionParagraphFormatting.html
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionComment.html
     node tools/run-sdkjs-qunit.mjs word/plugins/selectionListFormatting.html
@@ -318,7 +386,7 @@ if [[ "$mode" == "fast" ]]; then
     node tools/run-sdkjs-qunit.mjs word/plugins/remoteCollaborativeApply.html
 else
     step "Full Agent source and unit checks"
-    [[ -x "$biome_bin" && -x "$playwright_bin" ]] || \
+    [[ -x "$biome_bin" ]] || \
         fail "Full Agent verification dependencies are missing under $agent_root."
     (
         cd "$agent_root"
@@ -329,7 +397,10 @@ else
     step "Full Agent Chromium E2E"
     (
         cd "$agent_root"
-        "$playwright_bin" test --reporter=line --output="$temp_root/playwright"
+        CI=1 "$playwright_bin" test \
+            --retries=0 \
+            --reporter=line \
+            --output="$temp_root/playwright"
     )
 
     step "Auralith SDKJS QUnit pages"

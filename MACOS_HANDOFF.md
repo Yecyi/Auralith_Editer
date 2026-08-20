@@ -30,9 +30,9 @@ the forks' default-branch setting.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `f473911aaf521b89a8010f6a5fe0e3e8f0bc852b` |
-| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `fa600a69cabc868efd4e28a3fb502ee89a82bfcc` |
-| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `4ab23fb5ea6d5a10806615959d4dc26b3b4db2b3` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `4b107d01f955d5d73c8ac5c4c247eb3454071fc3` |
+| `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `ae954dc3ccd9eab01148bb744c13ee64d5933d65` |
+| `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `f1946d70cdc4a970e7c17207f8613b448d8afe5f` |
 
 Unmodified submodules remain on their official repositories.
 
@@ -40,11 +40,12 @@ Unmodified submodules remain on their official repositories.
 
 - `sdkjs` contains the read-only DOCX multimodal snapshot contract,
   structure/object inventory, asset chunking, stale-version checks and source
-  navigation, a bounded request-local selection-text read, plus seven bounded Word write semantics: text and paragraph
+  navigation, bounded request-local selection reads, plus seven atomic Word write semantics: text and paragraph
   formatting, existing-list level, exact-selection comment add, strict
   single-simple-cell plain-text replacement, and revision-bound main-body
   plain-text replacement, together with bounded selection/exact-match
-  replacement and deletion.
+  replacement and deletion. `document.word-edit-plan@1.0` composes five of
+  those kernels into one bounded all-or-nothing native History transaction.
 - `web-apps` contains the built-in editor host, header entry, advanced
   settings integration, restricted snapshot bridge, closed write profiles,
   Host-owned document mode/executor and dedicated opaque-receipt write
@@ -55,14 +56,17 @@ Unmodified submodules remain on their official repositories.
   Harness/runtime authorization and tests.
 - The `plugins/ai-agent` directory name is historical. The editor loads this
   code as a built-in feature without a plugin GUID or plugin-list entry.
-- DOCX Reader conversations now use one durable Agent session per
-  `documentId`. IndexedDB v3 stores ordered user/assistant messages, request
-  and model provenance, per-answer citations and durable citation anchors
-  outside the evictable reader cache.
+- DOCX Reader conversations use one durable Agent session and execution lane
+  per `documentId`. IndexedDB v4 preserves v3 sessions/messages and adds runs,
+  deterministic context checkpoints and document progress. One document has
+  at most one active and 32 queued runs; initial restore loads the latest 50
+  messages and pages older history upward.
 - The Reader sidebar renders a compact ChatGPT-style multi-turn thread. Draft
-  streaming remains an ephemeral, explicitly unverified plane; a completed
-  answer becomes visible only after citation validation and durable
-  checkpointing.
+  streaming remains an ephemeral, explicitly unverified plane; Stop creates a
+  durable cancelled response and late output is ignored. A completed answer
+  atomically replaces its draft only after one terminal V2 result, claim-level
+  provenance/quote validation and durable checkpointing. “Work process” shows
+  Host-observed source-aware phases, not hidden chain of thought.
 - The production composer now exposes only the natural-language textarea,
   document-scoped model selector and Send button. The former text-format,
   paragraph-layout, list and comment button rail is no longer mounted. Closed
@@ -73,14 +77,17 @@ Unmodified submodules remain on their official repositories.
   configured routes are never overwritten, and Provider secrets do not enter
   the catalog or document session.
 - Conversation context uses deterministic head/tail compaction: two recent
-  turns are preferred verbatim, older turns reduce to intent, bounded answer
-  excerpts and source IDs that must be revalidated. Conversation memory is
-  never document evidence. See `AURALITH_DOCUMENT_AGENT.md`.
-- Every answer now receives a deterministic Host-owned source plan. Explicit
-  document questions remain current-snapshot grounded; standalone creation and
-  explanation can use model knowledge; explicit combinations use document plus
-  model knowledge; current or browsing requests use the configured bounded web
-  search. Model-only requests neither scan nor lease the document. External
+  turns are preferred verbatim; older complete turns are admitted newest-first
+  before prompt order is restored, and only actual message IDs enter the
+  checkpoint. Conversation memory is never document evidence. See
+  `AURALITH_DOCUMENT_AGENT.md`.
+- Every answer receives a frozen Host-owned `ReaderRequestPlanV1`. Explicit
+  document/web/hybrid/write rules remain deterministic; only an unresolved
+  read request uses one bounded classifier that cannot add sources, tools or
+  write permission. Model-only requests neither scan nor lease the document.
+  Existing sessions use `explicit-only` external research, so current-time
+  heuristics alone never trigger a silent network call; `adaptive` additionally
+  requires provider/consent checks and a cancellable countdown. External
   results are untrusted, limited to five HTTP(S) sources/24,000 excerpt
   characters, and final Markdown URLs must match the request allowlist.
 - The source production registry enables
@@ -88,7 +95,8 @@ Unmodified submodules remain on their official repositories.
   `document.selection-paragraph-formatting@1.0`,
   `document.selection-list-formatting@1.0`, `document.comment@1.0`, and
   `document.selection-table-cell-text@1.0`, plus
-  `document.body-text-replacement@1.0` and `document.text-replacement@1.0`.
+  `document.body-text-replacement@1.0`, `document.text-replacement@1.0`, and
+  the composite `document.word-edit-plan@1.0`.
   The read-only `document.selection-text@1.0` capability captures a bounded
   exact quote for generated selection edits through fixed `GetSelectedText`
   arguments; it is not projected into Host context or durable memory. The Host owns one per-document
@@ -98,6 +106,18 @@ Unmodified submodules remain on their official repositories.
   immutable Host authorization, a one-shot receipt, no automatic retry after
   committed/unknown dispatch, a short target-scoped collaborative lock, and
   one native LIFO Undo point.
+- A Word edit plan has at most 12 ordered operations. V1 supports text and
+  paragraph formatting, existing-list level, a final comment and an exclusive
+  simple-cell replacement. One outer SDKJS action gives the whole plan one
+  native Undo point and exact all-or-nothing rollback. It is not a generic SDK
+  or script bridge; body/exact replacement and structural operations are not
+  advertised in the plan.
+- An immediate model-proposed selection plan uses one 8-second/no-retry
+  proposer plus a 30-second one-shot selection lease. The Reader sees only an
+  `sl-*` Host handle; SDKJS target state remains private. This path requires a
+  non-empty real selection, cannot queue or survive restart, and accepts only
+  unchanged or proven-disjoint rebase. Caret-only, intersecting, expired and
+  replayed targets fail closed.
 - Table-cell P0 replaces the complete plain text of exactly one simple,
   unmerged, top-level cell. It is not a rich-text or structural table editor.
   The current table-level change feed conservatively treats an edit to another
@@ -210,14 +230,16 @@ native-Undo receipt, and one editor-focused `Cmd+Z` restored both the
 `Quarterly review` heading and revenue paragraph. Both temporary files and the
 repository fixture retained SHA-256
 `176e36cf9d0eb830093fe8ea66df42c2f81b486d5ace81f793afef2629037727`.
-One separate fail-closed policy gap remains: after native Undo, SDKJS keeps the
-native Redo branch and `document.body-text` deliberately returns `BUSY` while
-`History.Can_Redo()` is true. `重新读取` correctly publishes a fresh snapshot,
-but cannot clear that history branch, so a later body write is rejected without
-mutation and the current UI misleadingly presents the generic Host-failure
-copy. This is not stale snapshot binding. Until Redo-preserving cowork policy
-and the `BUSY` presentation are addressed, use a fresh document session after
-Undo before retesting another whole-body write.
+That historical package had a separate fail-closed policy gap: after native
+Undo, SDKJS retained the Redo branch and rejected a later Agent write as
+`BUSY`. The 2026-08-21 source checkpoint replaces that blanket rejection with
+one shared native checkpoint policy across all atomic writes and the composite
+plan. A new explicit Auto edit may create an ordinary new branch only while the
+History prefix and every Redo point identity still match; verified success
+truncates Redo, while failure, no-op and verification rollback restore the
+exact branch metadata. `UndoRedoInProgress` and observer races still fail
+closed. Installed-app evidence for the new policy must be recorded separately
+from the historical body-clear run.
 
 The 2026-08-14 native exact-text-replacement repair checkpoint uses the pushed
 submodule commits `desktop-sdk@1fc59ff6`, `web-apps@fa600a69c`, and
