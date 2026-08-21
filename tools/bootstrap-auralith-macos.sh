@@ -66,7 +66,7 @@ prepare_submodule() {
 
 prepare_submodule \
     "desktop-sdk" \
-    "4b107d01f955d5d73c8ac5c4c247eb3454071fc3" \
+    "6fd9e9be88c37bc4624e6f5fde5b3a6e52692568" \
     "https://github.com/Yecyi/desktop-sdk.git" \
     "https://github.com/ONLYOFFICE/desktop-sdk.git"
 

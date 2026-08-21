@@ -30,7 +30,7 @@ the forks' default-branch setting.
 | Path | Writable origin | Upstream | Branch | Pinned commit |
 | --- | --- | --- | --- | --- |
 | root | `Yecyi/Auralith_Editer` | `ONLYOFFICE/DesktopEditors` | `codex/ai-native-office-p0` | recorded by root checkout |
-| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `4b107d01f955d5d73c8ac5c4c247eb3454071fc3` |
+| `desktop-sdk` | `Yecyi/desktop-sdk` | `ONLYOFFICE/desktop-sdk` | `codex/ai-native-office-p0` | `6fd9e9be88c37bc4624e6f5fde5b3a6e52692568` |
 | `web-apps` | `Yecyi/web-apps` | `ONLYOFFICE/web-apps-pro` | `codex/ai-native-office-p0` | `ae954dc3ccd9eab01148bb744c13ee64d5933d65` |
 | `sdkjs` | `Yecyi/sdkjs` | `ONLYOFFICE/sdkjs` | `codex/ai-native-office-p0` | `f1946d70cdc4a970e7c17207f8613b448d8afe5f` |
 
@@ -67,15 +67,28 @@ Unmodified submodules remain on their official repositories.
   atomically replaces its draft only after one terminal V2 result, claim-level
   provenance/quote validation and durable checkpointing. “Work process” shows
   Host-observed source-aware phases, not hidden chain of thought.
-- The production composer now exposes only the natural-language textarea,
+- The production composer now exposes only one conversational text box,
   document-scoped model selector and Send button. The former text-format,
   paragraph-layout, list and comment button rail is no longer mounted. Closed
   deterministic writes remain usable without a model; generated edits require
   the complete model/document/consent/session dispatch gate.
-- Model discovery enriches only live API-returned model IDs with validated
-  models.dev metadata. Custom OpenAI-compatible endpoints remain probe-gated,
-  configured routes are never overwritten, and Provider secrets do not enter
-  the catalog or document session.
+- The model-service chooser starts from built-in/offline entries and then
+  synchronizes only catalog entries that the registered OpenAI-compatible
+  transport can execute. Catalog IDs, names and HTTPS endpoints are bounded,
+  deduplicated and screened for templates, credentials and misleading control
+  characters. A failed update keeps the built-in list visible and offers an
+  explicit retry.
+- Model discovery still accepts availability only from the configured API's
+  live model list, then enriches those exact IDs with validated models.dev
+  metadata. Dynamic capabilities are trusted only when catalog protocol,
+  provider ID and canonical endpoint all match; proxies and curated transport
+  exceptions remain probe-gated. Configured routes are never overwritten, and
+  provider secrets do not enter the catalog or document session.
+- Active English and Simplified Chinese Agent surfaces use product language
+  rather than internal transport, indexing, storage or schema terminology.
+  Raw provider errors and downloader state are not rendered. A presentation
+  compatibility layer cleans old closed action receipts without rewriting user
+  messages or model answers.
 - Conversation context uses deterministic head/tail compaction: two recent
   turns are preferred verbatim; older complete turns are admitted newest-first
   before prompt order is restored, and only actual message IDs enter the
@@ -197,6 +210,18 @@ The verifier requires Node.js 20. Its Vite and Closure outputs, Playwright
 artifacts and network-fetch probes live under a temporary directory that is
 removed on exit. It never runs the Agent deploy-packaging script and does not
 overwrite tracked or packaged deploy assets.
+
+The 2026-08-21 provider-directory and UI-copy checkpoint advances
+`desktop-sdk` to `6fd9e9be88c37bc4624e6f5fde5b3a6e52692568`. Node.js 20
+`full --network` verification passed the exact fork-fetchable gitlinks, Host
+contracts, TypeScript, 545-file Biome, Agent Vitest 166 files/2,029 tests,
+Chromium Playwright 290/290, all ten Auralith SDKJS QUnit pages (201 tests/
+2,192 assertions), isolated desktop Word Closure, and the 3,351-module
+production Vite build. The synchronized provider directory remains bounded by
+the executable transport and live API model discovery; catalog metadata does
+not grant availability or bypass capability probes. Active English and
+Simplified Chinese product copy no longer exposes the removed composer wording
+or internal transport/schema/indexing terms.
 
 The 2026-08-21 durable-Agent checkpoint is rooted at
 `4996bae5665d82e3412ab09938784de92dfdd19c`, with the pushed submodules
